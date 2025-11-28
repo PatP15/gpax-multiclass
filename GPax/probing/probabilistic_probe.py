@@ -15,7 +15,7 @@
 
 """Measure uncertainty for GPP, GPR, linear ensemble."""
 
-from gpax.probing import gp
+from GPax.probing import gp
 import jax
 import numpy as np
 import sklearn.linear_model as sklm
@@ -167,3 +167,25 @@ def maha(x_query, x_observed=None, y_observed=None):
   dist0 = np.sum(np.dot(delta0, cov) * delta0, axis=1)
   dist1 = np.sum(np.dot(delta1, cov) * delta1, axis=1)
   return {'episteme': -np.min([dist0, dist1], axis=0)}
+
+
+def svm_probe(x_query, x_observed=None, y_observed=None):
+  """SVM probe baseline (Kim et al., 2018)."""
+  import sklearn.svm as sksvm
+  # Use linear SVM as per standard linear probe baselines
+  cls = sksvm.SVC(kernel='linear', probability=True).fit(x_observed, y_observed)
+  # SVM doesn't naturally output epistemic uncertainty in the same way,
+  # but we can use distance from boundary or probability calibration.
+  # Kim et al. often use max probability or similar metrics.
+  # Here we'll return probability for consistency with LP/LPE.
+  probs = cls.predict_proba(x_query)[:, 1]
+  
+  # For consistency with other probes returning uncertainty dicts
+  # We can define episteme similar to LP_MaxProb
+  episteme = np.max([probs, 1 - probs], axis=0)
+  
+  return {
+      'Judged probability': probs,
+      'episteme': episteme,
+      'predictions': cls.predict(x_query)
+  }
