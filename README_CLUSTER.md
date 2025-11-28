@@ -42,8 +42,8 @@ Ensure `3dshapes.h5` is present in the root directory.
 
 The main script is `gpp_extended_verification.py`.
 
-1.  **Update Dataset Size**:
-    Open `gpp_extended_verification.py` and change `N_SUBSET` back to the full dataset size or a large subset (e.g., 100,000) to ensure high-density plots.
+1.  **Verify Dataset Size**:
+    The script is configured for a large run (`N_SUBSET = 100000`). You can adjust this variable in `gpp_extended_verification.py` if needed.
     ```python
     # gpp_extended_verification.py
     N_SUBSET = 100000  # Set this to 100000 or None for full dataset

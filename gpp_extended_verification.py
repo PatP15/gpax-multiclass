@@ -630,8 +630,8 @@ def main():
         f = h5py.File('3dshapes.h5', 'r')
         # Use full dataset or very large subset for dense plots
         # The dataset has 480,000 images. 
-        # Reduced to 200 to avoid OOM/Overload
-        N_SUBSET = 200 
+        # Set to 100000 for cluster runs
+        N_SUBSET = 100000
         print(f"Subsetting to {N_SUBSET} samples...", flush=True)
         indices = np.random.choice(480000, N_SUBSET, replace=False)
         indices.sort()
