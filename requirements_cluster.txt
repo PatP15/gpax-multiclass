@@ -1,0 +1,16 @@
+numpy==1.26.4
+pandas
+scikit-learn
+tensorflow-probability==0.25.0
+seaborn
+matplotlib
+h5py
+dm-tree
+chex
+optax
+flax
+ml_collections
+absl-py
+wrapt
+typing_extensions
+

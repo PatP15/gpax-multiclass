@@ -1,0 +1,19 @@
+name: gpax-multiclass
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - absl-py
+  - flax
+  - jax
+  - jaxlib
+  - numpy
+  - optax
+  - pandas
+  - scikit-learn
+  - tensorflow-probability
+  - pip
+  - pip:
+    - ml_collections
+    - -e .
