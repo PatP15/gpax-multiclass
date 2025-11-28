@@ -3,6 +3,7 @@ import numpy as np
 import unittest
 import sys
 import os
+import time
 
 # Add project root to path to ensure we can import both GPax (if installed/available) and GPtorch
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,6 +19,13 @@ class TestParity(unittest.TestCase):
         import jax
         import jax.numpy as jnp
         from GPax.probing import gp as jax_gp
+        
+        # Configure JAX to use GPU if available (and not already configured)
+        # However, JAX usually auto-detects.
+        # User requested "rerun all the tests but with JAX on the GPU".
+        # We can print the default backend.
+        print(f"JAX Default Backend: {jax.default_backend()}")
+        
         self.key_jax = jax.random.PRNGKey(0)
         self.jax_gp = jax_gp
         self.jnp = jnp
@@ -104,6 +112,12 @@ class TestParity(unittest.TestCase):
             ('squared_exponential_sphere_kernel', ['lengthscale', 'signal_variance', 'intercept_scaling'])
         ]
         
+        # Move to GPU if available
+        if torch.cuda.is_available():
+            x1_torch = x1_torch.cuda()
+            x2_torch = x2_torch.cuda()
+            params_torch = {k: v.cuda() for k, v in params_torch.items()}
+        
         for kernel_name, param_keys in kernels:
             with self.subTest(kernel=kernel_name):
                 # Extract relevant params
@@ -112,11 +126,31 @@ class TestParity(unittest.TestCase):
                 
                 # Run JAX
                 jax_func = getattr(self.jax_gp, kernel_name)
+                
+                # Warmup JAX
+                # _ = jax_func(p_np, x1_np, x2_np).block_until_ready()
+                
+                t0 = time.time()
                 res_jax = jax_func(p_np, x1_np, x2_np)
+                if hasattr(res_jax, 'block_until_ready'):
+                    res_jax.block_until_ready()
+                t_jax = time.time() - t0
                 
                 # Run PyTorch
                 torch_func = getattr(torch_gp, kernel_name)
+                
+                # Warmup PyTorch
+                # _ = torch_func(p_torch, x1_torch, x2_torch)
+                
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                t0 = time.time()
                 res_torch = torch_func(p_torch, x1_torch, x2_torch)
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                t_torch = time.time() - t0
+                
+                # print(f"{kernel_name}: JAX={t_jax*1000:.3f}ms, Torch={t_torch*1000:.3f}ms")
                 
                 self.assertTensorAlmostEqual(res_jax, res_torch, atol=1e-5)
 
@@ -124,6 +158,102 @@ class TestParity(unittest.TestCase):
                 res_jax_diag = jax_func(p_np, x1_np, diag=True)
                 res_torch_diag = torch_func(p_torch, x1_torch, diag=True)
                 self.assertTensorAlmostEqual(res_jax_diag, res_torch_diag, atol=1e-5)
+
+    def test_gp_predict(self):
+        if not self.has_jax:
+            return
+            
+        # Setup data
+        N_obs = 10
+        N_query = 5
+        D = 3
+        x_obs = torch.randn(N_obs, D)
+        y_obs = torch.randint(0, 2, (N_obs, 1)).float()
+        x_query = torch.randn(N_query, D)
+        
+        params_torch = {
+            'lengthscale': torch.tensor([1.0]),
+            'signal_variance': torch.tensor([1.0]),
+            'alpha_eps': torch.tensor([0.1]),
+            'strength': torch.tensor([5.0]),
+            'constant': torch.tensor([0.0]), # Added missing parameter
+        }
+        
+        # Move to GPU
+        if torch.cuda.is_available():
+            x_obs = x_obs.cuda()
+            y_obs = y_obs.cuda()
+            x_query = x_query.cuda()
+            params_torch = {k: v.cuda() for k, v in params_torch.items()}
+        
+        # JAX data
+        x_obs_jax = self.jnp.array(x_obs.cpu().numpy())
+        y_obs_jax = self.jnp.array(y_obs.cpu().numpy())
+        x_query_jax = self.jnp.array(x_query.cpu().numpy())
+        params_jax = {k: self.jnp.array(v.cpu().numpy()) for k, v in params_torch.items()}
+        
+        # Mean/Cov funcs
+        mean_func_torch = torch_gp.constant_mean
+        cov_func_torch = torch_gp.squared_exponential_kernel
+        
+        mean_func_jax = self.jax_gp.constant_mean
+        cov_func_jax = self.jax_gp.squared_exponential_kernel
+        
+        # 1. gp_predict (basic)
+        # We need var_observed
+        var_obs = torch.ones(N_obs) * 0.1
+        if torch.cuda.is_available(): var_obs = var_obs.cuda()
+        var_obs_jax = self.jnp.array(var_obs.cpu().numpy())
+        
+        mu_t, cov_t = torch_gp.gp_predict(
+            mean_func=mean_func_torch,
+            cov_func=cov_func_torch,
+            params=params_torch,
+            x_query=x_query,
+            x_observed=x_obs,
+            y_observed=y_obs,
+            var_observed=var_obs,
+            var_only=True
+        )
+        
+        mu_j, cov_j = self.jax_gp.gp_predict(
+            mean_func=mean_func_jax,
+            cov_func=cov_func_jax,
+            params=params_jax,
+            x_query=x_query_jax,
+            x_observed=x_obs_jax,
+            y_observed=y_obs_jax,
+            var_observed=var_obs_jax,
+            var_only=True
+        )
+        
+        self.assertTensorAlmostEqual(mu_j, mu_t, atol=1e-4)
+        self.assertTensorAlmostEqual(cov_j, cov_t, atol=1e-4)
+        
+        # 2. beta_gp_predict
+        preds_t = torch_gp.beta_gp_predict(
+            mean_func=mean_func_torch,
+            cov_func=cov_func_torch,
+            params=params_torch,
+            x_query=x_query,
+            x_observed=x_obs,
+            y_observed=y_obs,
+            var_only=True
+        )
+        
+        preds_j = self.jax_gp.beta_gp_predict(
+            mean_func=mean_func_jax,
+            cov_func=cov_func_jax,
+            params=params_jax,
+            x_query=x_query_jax,
+            x_observed=x_obs_jax,
+            y_observed=y_obs_jax,
+            var_only=True
+        )
+        
+        # Check first class predictions
+        self.assertTensorAlmostEqual(preds_j[0][0], preds_t[0][0], atol=1e-4)
+        self.assertTensorAlmostEqual(preds_j[0][1], preds_t[0][1], atol=1e-4)
 
 if __name__ == '__main__':
     unittest.main()
