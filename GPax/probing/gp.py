@@ -490,6 +490,7 @@ def beta_gp_uncertainty(predictions, seed=0, n=int(1e6)):
 def gp_uncertainty(latent_mu, latent_var, seed=0, n=int(1e6)):
   """Measure uncertainty metrics for logistic GP."""
   key = jax.random.PRNGKey(seed)
+  latent_var = jnp.maximum(latent_var, 1e-32)  # guard sqrt/log of tiny-negative posterior var
   norm_samples = jax.random.normal(key, (latent_mu.shape[0], n))
   iid_samples = norm_samples * jnp.sqrt(latent_var) + latent_mu
   p_samples = 1.0 / (1 + jnp.exp(-iid_samples))  # num_inputs x n
@@ -519,13 +520,18 @@ def classifier_samples_uncertainty(
       mu**2
   )  # num_inputs x 1
   bernoulli_var = jnp.mean(p_samples * (1 - p_samples), axis=1, keepdims=True)
+  # Clip p into (0,1) so entropy stays finite for confident samples (float32-safe).
+  eps = 1e-7
+  p_c = jnp.clip(p_samples, eps, 1 - eps)
   bernoulli_entropy = -jnp.mean(
-      p_samples * jnp.log(p_samples) + (1 - p_samples) * jnp.log(1 - p_samples),
+      p_c * jnp.log(p_c) + (1 - p_c) * jnp.log(1 - p_c),
       axis=1,
       keepdims=True,
   )
+  mu_c = jnp.clip(mu, eps, 1 - eps)
   info_gain = (
-      -(mu * jnp.log(mu) + (1 - mu) * jnp.log(1 - mu)) - bernoulli_entropy
+      -(mu_c * jnp.log(mu_c) + (1 - mu_c) * jnp.log(1 - mu_c))
+      - bernoulli_entropy
   )
   ret = {
       'epistemic_var': var,  # Variance for each label

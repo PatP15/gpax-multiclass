@@ -379,7 +379,9 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
         # We need at least one of each class to calc AUROC
         if len(np.unique(misclassified)) == 2:
             # Use Epistemic uncertainty as the score for detecting misclassification
-            auroc_mis = roc_auc_score(misclassified, epistemic)
+            # 'Episteme' is a CONFIDENCE (higher = more certain); misclassification
+            # correlates with UNCERTAINTY, so the score must be negated.
+            auroc_mis = roc_auc_score(misclassified, -epistemic)
         else:
             auroc_mis = np.nan
 

@@ -51,10 +51,7 @@ def gpp_multiclass(
   Returns:
     Dictionary mapping from name to measures of uncertainty.
   """
-  jax.debug.print("Starting GPP Multiclass...")
-  jax.debug.print("Query shape: {}", x_query.shape)
-  if x_observed is not None:
-    jax.debug.print("Observed shape: {}, labels: {}", x_observed.shape, y_observed.shape)
+  # (debug prints removed)
     
   mean_func = gp.constant_mean
   cov_func = gp.cosine_kernel

@@ -210,7 +210,6 @@ def get_latent_observations_dirichlet(params, y, warp_func=None):
     y: latent function observation n x K.
     var: latent noise n x K.
   """
-  jax.debug.print("Input y shape: {}", y.shape)
   
   alpha_eps, strength = retrieve_params(
       params, ['alpha_eps', 'strength'], warp_func=warp_func
@@ -223,11 +222,9 @@ def get_latent_observations_dirichlet(params, y, warp_func=None):
     else:
         num_classes = int(jnp.max(y) + 1)
     y = jax.nn.one_hot(y.flatten().astype(int), num_classes)
-    jax.debug.print("One-hot y shape: {}", y.shape)
     
   # Dirichlet parameters: α_k = α_eps + y_k × strength for each class k
   alpha = jnp.ones_like(y) * alpha_eps + y * strength
-  jax.debug.print("Alpha values (first 5): {}", alpha[:5])
   
   var, y = get_latent_var_mu_dirichlet(alpha)
   return y, var
@@ -329,7 +326,6 @@ def dirichlet_gp_predict(
   params = set_default_params_dirichlet(params, num_classes, warp_func=warp_func)
   
   predictions = []
-  jax.debug.print("Starting prediction for {} classes", num_classes)
   
   for i in range(num_classes):
     if y_latent is not None:
@@ -350,7 +346,6 @@ def dirichlet_gp_predict(
         var_only=var_only,
     )
     predictions.append(mu_var)
-    jax.debug.print("Class {} prediction: mu shape {}, var shape {}", i, mu_var[0].shape, mu_var[1].shape)
     
   return predictions
 
@@ -364,7 +359,6 @@ def get_latent_gp_dirichlet(predictions):
   """
   mus = [pred[0] for pred in predictions]
   vars = [pred[1] for pred in predictions]
-  jax.debug.print("Extracted {} latent GPs", len(mus))
   return mus, vars
 
 
@@ -416,7 +410,6 @@ def dirichlet_gp_uncertainty(predictions, seed=0, n=int(1e6)):
   latent_var = jnp.hstack(latent_vars_list)  # n' x K
   latent_var = jnp.maximum(latent_var, 1e-32)
   
-  jax.debug.print("Stacked latent mu: {}, var: {}", latent_mu.shape, latent_var.shape)
   
   return gp_uncertainty_multiclass(latent_mu, latent_var, seed=seed, n=n)
 
@@ -438,8 +431,6 @@ def gp_uncertainty_multiclass(latent_mu, latent_var, seed=0, n=int(1e6)):
   # Apply softmax along class dimension (axis 1)
   p_samples = jax.nn.softmax(iid_samples, axis=1)  # n' x K x n
   
-  jax.debug.print("Probability samples shape: {}", p_samples.shape)
-  jax.debug.print("Mean prob (first query): {}", jnp.mean(p_samples[0], axis=1))
   
   # Categorical uncertainty metrics
   ret = classifier_samples_uncertainty_multiclass(p_samples)
@@ -479,8 +470,6 @@ def classifier_samples_uncertainty_multiclass(p_samples):
   # Mutual information (epistemic uncertainty) = Total - Aleatoric
   info_gain = entropy_of_mean - categorical_entropy
   
-  jax.debug.print("Avg Aleatoric Entropy: {}", jnp.mean(categorical_entropy))
-  jax.debug.print("Avg Info Gain: {}", jnp.mean(info_gain))
   
   # Episteme: Negative Entropy of the distribution of p (approximated as Gaussian)
   # To match binary GPP, higher Episteme means higher certainty (lower variance).
