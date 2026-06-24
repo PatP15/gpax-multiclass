@@ -1,0 +1,13 @@
+Running Step 3: Visualization on CPU...
+=== Step 3: Visualization ===
+Saved accuracy_comparison.png
+Saved annoMI/figures/gemma/auroc_comparison.png
+Generating Figure 6 (LPE vs GPP)...
+Saved annoMI/figures/gemma/figure6_lpe_vs_gpp.png
+Generating Examples Table (n=2400)...
+Loading AnnoMI datasets from local CSVs...
+Loaded Train: 15336 rows
+Loaded Test: 1980 rows
+Processed Train: 7576 pairs.
+Processed Test: 973 pairs.
+Saved examples table to annoMI/figures/gemma/examples_table.csv

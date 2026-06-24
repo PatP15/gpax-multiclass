@@ -4,16 +4,22 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - absl-py
-  - flax
-  - jax
-  - jaxlib
-  - numpy
-  - optax
-  - pandas
-  - scikit-learn
-  - tensorflow-probability
   - pip
   - pip:
-    - ml_collections
-    - -e .
+    - torch==2.5.1
+    - transformers==4.46.3
+    - datasets
+    - pandas
+    - numpy
+    - scipy
+    - scikit-learn
+    - jax[cpu]
+    - gpax
+    - fsspec
+    - pyarrow
+    - huggingface-hub
+    - tqdm
+    - requests
+    - ml_dtypes
+    - opt_einsum
+    - seaborn

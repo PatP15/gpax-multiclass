@@ -16,6 +16,7 @@ from matplotlib.patches import Polygon
 import seaborn as sns
 import warnings
 from functools import partial
+import gc
 
 warnings.filterwarnings('ignore')
 
@@ -82,6 +83,29 @@ def compute_auroc(y_true, y_probs, is_multiclass=False):
         auroc = np.nan
     return auroc
 
+def print_gpu_memory():
+    try:
+        # Silent unless needed
+        pass 
+    except:
+        pass
+
+def get_embeddings_batched(state, images, batch_size=2048):
+    """Compute embeddings in batches to avoid OOM."""
+    num_images = images.shape[0]
+    embeddings = []
+    # print(f"Computing embeddings for {num_images} images (batch_size={batch_size})...")
+    
+    for i in range(0, num_images, batch_size):
+        batch = images[i:i+batch_size]
+        # JAX will put batch on GPU, compute, then we move back to CPU
+        emb = cnn_model.get_embeddings(state, batch)
+        embeddings.append(np.array(emb)) # Convert to numpy to store in RAM
+        # if i % (batch_size * 10) == 0:
+        #    print(f"  Processed {i}/{num_images}...", flush=True)
+            
+    return np.concatenate(embeddings, axis=0)
+
 # --- Plotting Functions ---
 
 def plot_figure4_lines(df_auroc, scenario_name):
@@ -135,10 +159,15 @@ def plot_figure4_lines(df_auroc, scenario_name):
     for ax in axes:
         ax.get_legend().remove()
 
+    # Create output directory if it doesn't exist
+    output_dir = f"results/results_{scenario_name}"
+    os.makedirs(output_dir, exist_ok=True)
+
     plt.suptitle(f'Figure 4: Learning Curves ({scenario_name})', fontsize=16)
     plt.tight_layout()
-    plt.savefig(f'figure4_auroc_{scenario_name}.png', dpi=300)
-    print(f"Saved figure4_auroc_{scenario_name}.png")
+    save_path = os.path.join(output_dir, f'figure4_auroc_{scenario_name}.png')
+    plt.savefig(save_path, dpi=300)
+    print(f"Saved {save_path}")
 
 def plot_figure5_uncertainty(df_unc, df_sim, scenario_name):
     """Replicate Figure 5: Correlation and Judged Prob vs Episteme."""
@@ -157,6 +186,10 @@ def plot_figure5_uncertainty(df_unc, df_sim, scenario_name):
     for idx, method in enumerate(methods):
         d = data_corr[data_corr['method'] == method]
         if len(d) > 0:
+            # Downsample for scatter plot if too many points to avoid clutter/slowness
+            if len(d) > 2000:
+                d = d.sample(2000, random_state=42)
+            
             corr, _ = pearsonr(d['gt_prob'], d['judged_prob'])
             label = f"{method} (r={corr:.2f})"
             ax1.scatter(d['gt_prob'], d['judged_prob'], alpha=0.3, label=label, color=colors[idx], s=10)
@@ -181,6 +214,9 @@ def plot_figure5_uncertainty(df_unc, df_sim, scenario_name):
     d_lpe = df_ambiguous[df_ambiguous['method'] == 'LPE']
     
     if not d_lpe.empty:
+        # Downsample
+        if len(d_lpe) > 2000: d_lpe = d_lpe.sample(2000, random_state=42)
+        
         sns.scatterplot(data=d_lpe, x='episteme', y='judged_prob', hue='n_obs', 
                        palette='rocket_r', ax=ax2, legend=False)
         ax2.set_xscale('log')
@@ -193,6 +229,9 @@ def plot_figure5_uncertainty(df_unc, df_sim, scenario_name):
     d_gpp = df_ambiguous[df_ambiguous['method'] == 'GPP']
     
     if not d_gpp.empty:
+         # Downsample
+        if len(d_gpp) > 2000: d_gpp = d_gpp.sample(2000, random_state=42)
+        
         sns.scatterplot(data=d_gpp, x='episteme', y='judged_prob', hue='n_obs', 
                        palette='rocket_r', ax=ax3)
         ax3.set_xscale('log')
@@ -203,8 +242,14 @@ def plot_figure5_uncertainty(df_unc, df_sim, scenario_name):
 
     plt.suptitle(f'Figure 5: Uncertainty Analysis ({scenario_name})', fontsize=16)
     plt.tight_layout()
-    plt.savefig(f'figure5_uncertainty_{scenario_name}.png', dpi=300)
-    print(f"Saved figure5_uncertainty_{scenario_name}.png")
+    
+    # Create output directory if it doesn't exist
+    output_dir = f"results/results_{scenario_name}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    save_path = os.path.join(output_dir, f'figure5_uncertainty_{scenario_name}.png')
+    plt.savefig(save_path, dpi=300)
+    print(f"Saved {save_path}")
 
 def plot_figure6_alea(df_unc, df_sim, scenario_name):
     """Replicate Figure 6: Alea vs Episteme."""
@@ -245,15 +290,69 @@ def plot_figure6_alea(df_unc, df_sim, scenario_name):
                        palette='rocket_r', ax=ax3)
         ax3.set_xscale('log')
         ax3.set_title('GPP | GT Prob ≈ 1.0')
+        
+        # Fix: Explicitly add legend for the last plot if not added elsewhere
+        # seaborn's hue automatically adds a legend to the axes, but we want to control its position
+        # Check if legend exists, if so move it. If not, let it be or force it.
+        # Typically sns adds it to the ax.
         plt.legend(title='Observations', bbox_to_anchor=(1.05, 1), loc='upper left')
+    else:
+        # Fallback if no data, just to keep layout consistent
+        ax3.text(0.5, 0.5, 'No Confident Data for GPP')
 
     plt.suptitle(f'Figure 6: Alea vs Episteme ({scenario_name})', fontsize=16)
     plt.tight_layout()
-    plt.savefig(f'figure6_alea_episteme_{scenario_name}.png', dpi=300)
-    print(f"Saved figure6_alea_episteme_{scenario_name}.png")
+    
+    # Create output directory if it doesn't exist
+    output_dir = f"results/results_{scenario_name}"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    save_path = os.path.join(output_dir, f'figure6_alea_episteme_{scenario_name}.png')
+    plt.savefig(save_path, dpi=300)
+    print(f"Saved {save_path}")
+
+def plot_dirichlet_manifold_3d(probs, title, filename, save_data_path=None):
+    """Plot 3-class Dirichlet manifold in 3D and save data."""
+    if probs.shape[1] != 3:
+        print("Manifold plot requires 3 classes.")
+        return
+
+    # Save data if path provided
+    if save_data_path:
+        df_manifold = pd.DataFrame(probs, columns=['P_Class0', 'P_Class1', 'P_Class2'])
+        df_manifold.to_csv(save_data_path, index=False)
+        print(f"Saved manifold data to {save_data_path}")
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Scatter points
+    # Use Class 0 probability for color mapping
+    p = ax.scatter(probs[:, 0], probs[:, 1], probs[:, 2], c=probs[:, 0], cmap='viridis', alpha=0.6, s=20)
+    
+    ax.set_xlabel('P(Class 0)')
+    ax.set_ylabel('P(Class 1)')
+    ax.set_zlabel('P(Class 2)')
+    ax.set_title(title)
+    
+    # Add colorbar
+    fig.colorbar(p, ax=ax, label='P(Class 0)', shrink=0.5, aspect=10)
+    
+    # Set limits
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_zlim(0, 1)
+    
+    # View angle
+    ax.view_init(elev=30, azim=45)
+    
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    print(f"Saved {filename}")
+    plt.close()
 
 def plot_dirichlet_manifold(probs, title, filename):
-    """Plot 3-class Dirichlet manifold."""
+    """Plot 3-class Dirichlet manifold (2D Projection)."""
     if probs.shape[1] != 3:
         print("Manifold plot requires 3 classes.")
         return
@@ -293,32 +392,30 @@ def plot_dirichlet_manifold(probs, title, filename):
 
 # --- Experiment Driver ---
 
-def run_experiment(scenario_name, task_key, is_multiclass, embeddings_dict, labels_dict, teacher_model_name='M1'):
-    print(f"\n>>> Starting Experiment: {scenario_name} (Multiclass={is_multiclass})")
+def run_experiment_single_model(scenario_name, task_key, is_multiclass, 
+                              model_name, X_emb_model, 
+                              X_emb_teacher, y_all):
+    """Runs probe experiment for ONE model to save memory."""
+    print(f"\n>>> Experiment: {scenario_name} | Model: {model_name}")
     
-    # Data Setup
-    y_all = labels_dict[task_key]
+    # 1. Setup Teacher (re-done per model call, or we could pass pre-computed probs)
+    # Ideally, we compute GT probs once outside. But for now, let's do it quickly here or pass them.
+    # Let's assume X_emb_teacher is provided.
     
-    # 1. Train Teacher for Ground Truth Probabilities (using M1 embeddings)
-    print("Training Teacher Model...")
-    X_emb_teacher = embeddings_dict[teacher_model_name]
-    # Align labels length
+    # Align labels
     L_teach = min(len(X_emb_teacher), len(y_all))
-    X_emb_teacher = X_emb_teacher[:L_teach]
-    y_teacher = y_all[:L_teach]
+    X_teach = X_emb_teacher[:L_teach]
+    y_teach = y_all[:L_teach]
     
-    # Split for teacher
+    # Split teacher (fixed seed)
     X_teach_train, X_teach_test, y_teach_train, y_teach_test = train_test_split(
-        X_emb_teacher, y_teacher, test_size=0.5, random_state=42)
-    
-    # Use KNN for smooth probabilities
+        X_teach, y_teach, test_size=0.5, random_state=42)
+        
+    # KNN for GT
     from sklearn.neighbors import KNeighborsClassifier
     knn = KNeighborsClassifier(n_neighbors=20, weights='distance')
     knn.fit(X_teach_train, y_teach_train)
-    
-    # Get GT probs for the *test set* which we will probe
-    # For Multiclass, predict_proba returns (N, K). For Binary (N, 2).
-    gt_probs_test = knn.predict_proba(X_teach_test) 
+    gt_probs_test = knn.predict_proba(X_teach_test)
     
     # Metric Containers
     auroc_results = []
@@ -326,175 +423,202 @@ def run_experiment(scenario_name, task_key, is_multiclass, embeddings_dict, labe
     
     # Probing Config
     observation_levels = [2, 4, 8, 16, 32, 64, 128]
-    repeats_per_level = 5 # For error bars
+    repeats_per_level = 5
     
-    # Loop over Models (M1, M2, M3)
-    for model_name in ['M1', 'M2', 'M3']:
-        print(f"  Probing Model: {model_name}")
-        X_emb = embeddings_dict[model_name]
-        # Align
-        L = min(len(X_emb), len(y_all))
-        X_emb = X_emb[:L]
-        y = y_all[:L]
-        
-        # Use the SAME test split indices as teacher to align GT probs
-        _, X_probe_test, _, y_probe_test = train_test_split(X_emb, y, test_size=0.5, random_state=42)
-        
-        # Check alignment
-        if len(X_probe_test) != len(gt_probs_test):
-            # If models have different embedding sizes, we can't directly map teacher probs.
-            # Simplified: Re-predict GT probs for THIS model's test set using teacher?
-            # Better: Just trust the split random_state=42 keeps indices aligned if original inputs were same.
-            # If inputs differ, we skip GT alignment for other models or re-train teacher.
-            # Assumption: X_emb for M1, M2, M3 come from same images.
-            pass
+    # 2. Process THIS Model
+    X_emb = X_emb_model
+    L = min(len(X_emb), len(y_all))
+    X_emb = X_emb[:L]
+    y = y_all[:L]
+    
+    # Split (must match teacher split logic if inputs align)
+    _, X_probe_test, _, y_probe_test = train_test_split(X_emb, y, test_size=0.5, random_state=42)
+    
+    # Loop levels
+    for n_obs in observation_levels:
+        for r in range(repeats_per_level):
+            seed = 42 + n_obs * 100 + r
+            
+            # Sample Training Data
+            X_probe_train_pool, _, y_probe_train_pool, _ = train_test_split(X_emb, y, test_size=0.5, random_state=42)
+            
+            try:
+                if n_obs >= len(np.unique(y_probe_train_pool)):
+                     X_obs, _, y_obs, _ = train_test_split(
+                        X_probe_train_pool, y_probe_train_pool, 
+                        train_size=n_obs, stratify=y_probe_train_pool, random_state=seed)
+                else:
+                     indices = np.random.choice(len(X_probe_train_pool), n_obs, replace=False)
+                     X_obs = X_probe_train_pool[indices]
+                     y_obs = y_probe_train_pool[indices]
+            except: continue
 
-        # Loop over observation levels
-        for n_obs in observation_levels:
-            for r in range(repeats_per_level):
-                seed = 42 + n_obs * 100 + r
-                
-                # Sample Training Data (Stratified)
-                # We sample from the *other* half (train split)
-                X_probe_train_pool, _, y_probe_train_pool, _ = train_test_split(X_emb, y, test_size=0.5, random_state=42)
-                
-                # Stratified sample of n_obs
-                try:
-                    # Use sklearn for stratified sampling
-                    if n_obs >= len(np.unique(y_probe_train_pool)):
-                         X_obs, _, y_obs, _ = train_test_split(
-                            X_probe_train_pool, y_probe_train_pool, 
-                            train_size=n_obs, stratify=y_probe_train_pool, random_state=seed)
-                    else:
-                        # Random sample if n_obs too small for stratification
-                         indices = np.random.choice(len(X_probe_train_pool), n_obs, replace=False)
-                         X_obs = X_probe_train_pool[indices]
-                         y_obs = y_probe_train_pool[indices]
-                except:
-                    continue # Skip if sampling fails
-
-                # --- RUN PROBES ---
-                
-                # 1. GPP
-                try:
-                    if is_multiclass:
-                        y_obs_oh = jax.nn.one_hot(y_obs, gt_probs_test.shape[1])
-                        unc = ppm.gpp_multiclass(X_probe_test, X_obs, y_obs_oh, num_classes=gt_probs_test.shape[1])
-                        probs = np.array(unc['categorical_mu'])
-                        # Uncertainty Metrics
-                        # For multiclass, 'Judged Prob' is usually max prob? Or prob of true class?
-                        # Paper Fig 5 uses "Judged Probability" (of the correct class? or class 1?)
-                        # For binary, it's class 1.
-                    else:
-                        unc = pp.gpp(X_probe_test, X_obs, y_obs)
-                        probs = np.array(unc['Judged probability']) # (N, 1) or (N,)
-                        episteme = np.array(unc['Episteme'])
-                        alea = np.array(unc['Alea'])
-
-                    # AUROC
-                    score = compute_auroc(y_probe_test, probs, is_multiclass)
-                    auroc_results.append({
-                        'model': model_name, 'n_obs': n_obs, 'method': 'GPP', 
-                        'AUROC': score, 'task_type': scenario_name
-                    })
+            # --- RUN PROBES ---
+            
+            # 1. GPP
+            try:
+                if is_multiclass:
+                    y_obs_oh = jax.nn.one_hot(y_obs, gt_probs_test.shape[1])
                     
-                    # Save uncertainty data (for specific N_obs and Model M1 only to save space?)
-                    # Save all for now
-                    if not is_multiclass: # Figure 5/6 usually binary focused in paper, but we try both
-                        # For binary, store stats
-                        for i in range(min(len(probs), 50)): # Store subsample
-                            uncertainty_data.append({
-                                'model': model_name, 'n_obs': n_obs, 'method': 'GPP',
-                                'judged_prob': float(probs[i]),
-                                'episteme': float(episteme[i]),
-                                'alea': float(alea[i]),
-                                'gt_prob': float(gt_probs_test[i, 1]) # Class 1 prob
-                            })
+                    # BATCHED GPP
+                    batch_size_probe = 2000
+                    probs_batches = []
+                    ep_batches = []
+                    al_batches = []
+                    for i in range(0, len(X_probe_test), batch_size_probe):
+                        batch_x = X_probe_test[i:i+batch_size_probe]
+                        unc_batch = ppm.gpp_multiclass(batch_x, X_obs, y_obs_oh, num_classes=gt_probs_test.shape[1])
+                        probs_batches.append(np.array(unc_batch['categorical_mu']))
+                        ep_batches.append(np.array(unc_batch['Episteme']).flatten())
+                        al_batches.append(np.array(unc_batch['Alea']).flatten())
+                    probs = np.concatenate(probs_batches, axis=0)
+                    episteme = np.concatenate(ep_batches, axis=0)
+                    alea = np.concatenate(al_batches, axis=0)
+                else:
+                    # BATCHED GPP BINARY
+                    batch_size_probe = 2000
+                    probs_batches = []
+                    ep_batches = []
+                    al_batches = []
+                    for i in range(0, len(X_probe_test), batch_size_probe):
+                        batch_x = X_probe_test[i:i+batch_size_probe]
+                        unc_batch = pp.gpp(batch_x, X_obs, y_obs)
+                        probs_batches.append(np.array(unc_batch['Judged probability']))
+                        ep_batches.append(np.array(unc_batch['Episteme']))
+                        al_batches.append(np.array(unc_batch['Alea']))
+                    probs = np.concatenate(probs_batches, axis=0)
+                    episteme = np.concatenate(ep_batches, axis=0)
+                    alea = np.concatenate(al_batches, axis=0)
 
-                except Exception as e:
-                    pass # print(f"GPP Err: {e}")
-
-                # 2. LPE
-                try:
-                    if is_multiclass:
-                        unc = ppm.lpe_multiclass(X_probe_test, X_obs, y_obs, repeats=20)
-                        probs = np.array(unc['categorical_mu'])
-                    else:
-                        unc = pp.lpe(X_probe_test, X_obs, y_obs, repeats=20)
-                        p1 = np.array(unc['Judged probability'])
-                        probs = p1
-                        episteme = np.array(unc['Episteme'])
-                        alea = np.array(unc['Alea'])
-
-                    score = compute_auroc(y_probe_test, probs, is_multiclass)
-                    auroc_results.append({
-                        'model': model_name, 'n_obs': n_obs, 'method': 'LPE', 
-                        'AUROC': score, 'task_type': scenario_name
-                    })
-                    
-                    if not is_multiclass:
-                         for i in range(min(len(probs), 50)):
-                            uncertainty_data.append({
-                                'model': model_name, 'n_obs': n_obs, 'method': 'LPE',
-                                'judged_prob': float(probs[i]),
-                                'episteme': float(episteme[i]),
-                                'alea': float(alea[i]),
-                                'gt_prob': float(gt_probs_test[i, 1])
-                            })
-                except Exception as e:
-                    pass
-
-                # 3. SVM
-                try:
-                    if is_multiclass:
-                        clf = sksvm.SVC(kernel='linear', probability=True)
-                        clf.fit(X_obs, y_obs)
-                        probs = clf.predict_proba(X_probe_test)
-                    else:
-                        res = pp.svm_probe(X_probe_test, X_obs, y_obs)
-                        probs = res['Judged probability']
-                    
-                    score = compute_auroc(y_probe_test, probs, is_multiclass)
-                    auroc_results.append({
-                        'model': model_name, 'n_obs': n_obs, 'method': 'SVM', 
-                        'AUROC': score, 'task_type': scenario_name
-                    })
-                except: pass
-
-                # 4. LP (Linear Probe - Logistic)
-                try:
-                    probs = compute_lpr_probs(X_probe_test, X_obs, y_obs, gt_probs_test.shape[1])
-                    score = compute_auroc(y_probe_test, probs, is_multiclass)
-                    auroc_results.append({
-                        'model': model_name, 'n_obs': n_obs, 'method': 'LP', 
-                        'AUROC': score, 'task_type': scenario_name
-                    })
-                except: pass
+                score = compute_auroc(y_probe_test, probs, is_multiclass)
+                auroc_results.append({
+                    'model': model_name, 'n_obs': n_obs, 'method': 'GPP', 
+                    'AUROC': score, 'task_type': scenario_name
+                })
                 
-                # 5. Mahalanobis
-                try:
-                    if is_multiclass:
-                        res = ppm.maha_multiclass(X_probe_test, X_obs, y_obs)
-                        # Maha returns negative distance (higher is better). 
-                        # For AUROC we need "scores". Negative dist works.
-                        # But it doesn't return probabilities per class directly in the simple implementation.
-                        # Skip AUROC for Maha unless we implement prob conversion.
-                        pass 
-                    else:
-                        res = pp.maha(X_probe_test, X_obs, y_obs)
-                        # Score is 'episteme' (neg distance). 
-                        # AUROC expects score for positive class.
-                        # Maha is usually for OOD, but here used as probe?
-                        # Let's skip AUROC for Maha to avoid confusion or use simplified dist.
-                        pass
-                except: pass
+                if not is_multiclass:
+                    for i in range(min(len(probs), 50)):
+                        uncertainty_data.append({
+                            'model': model_name, 'n_obs': n_obs, 'method': 'GPP',
+                            'judged_prob': float(probs[i]),
+                            'episteme': float(episteme[i]),
+                            'alea': float(alea[i]),
+                            'gt_prob': float(gt_probs_test[i, 1])
+                        })
+                else:
+                     # Save multiclass uncertainty (using max prob)
+                     max_probs = np.max(probs, axis=1)
+                     max_gt = np.max(gt_probs_test, axis=1)
+                     for i in range(min(len(probs), 50)):
+                        uncertainty_data.append({
+                            'model': model_name, 'n_obs': n_obs, 'method': 'GPP',
+                            'judged_prob': float(max_probs[i]),
+                            'episteme': float(episteme[i]),
+                            'alea': float(alea[i]),
+                            'gt_prob': float(max_gt[i])
+                        })
+            except Exception as e: pass
 
+            # 2. LPE
+            try:
+                if is_multiclass:
+                    # BATCHED LPE
+                    batch_size_probe = 2000
+                    probs_batches = []
+                    ep_batches = []
+                    al_batches = []
+                    for i in range(0, len(X_probe_test), batch_size_probe):
+                        batch_x = X_probe_test[i:i+batch_size_probe]
+                        unc_batch = ppm.lpe_multiclass(batch_x, X_obs, y_obs, repeats=20)
+                        probs_batches.append(np.array(unc_batch['categorical_mu']))
+                        ep_batches.append(np.array(unc_batch['Episteme']).flatten())
+                        al_batches.append(np.array(unc_batch['Alea']).flatten())
+                    probs = np.concatenate(probs_batches, axis=0)
+                    episteme = np.concatenate(ep_batches, axis=0)
+                    alea = np.concatenate(al_batches, axis=0)
+                else:
+                    # BATCHED LPE BINARY
+                    batch_size_probe = 2000
+                    probs_batches = []
+                    ep_batches = []
+                    al_batches = []
+                    for i in range(0, len(X_probe_test), batch_size_probe):
+                        batch_x = X_probe_test[i:i+batch_size_probe]
+                        unc_batch = pp.lpe(batch_x, X_obs, y_obs, repeats=20)
+                        probs_batches.append(np.array(unc_batch['Judged probability']))
+                        ep_batches.append(np.array(unc_batch['Episteme']))
+                        al_batches.append(np.array(unc_batch['Alea']))
+                    probs = np.concatenate(probs_batches, axis=0)
+                    episteme = np.concatenate(ep_batches, axis=0)
+                    alea = np.concatenate(al_batches, axis=0)
+
+                score = compute_auroc(y_probe_test, probs, is_multiclass)
+                auroc_results.append({
+                    'model': model_name, 'n_obs': n_obs, 'method': 'LPE', 
+                    'AUROC': score, 'task_type': scenario_name
+                })
+                
+                if not is_multiclass:
+                     for i in range(min(len(probs), 50)):
+                        uncertainty_data.append({
+                            'model': model_name, 'n_obs': n_obs, 'method': 'LPE',
+                            'judged_prob': float(probs[i]),
+                            'episteme': float(episteme[i]),
+                            'alea': float(alea[i]),
+                            'gt_prob': float(gt_probs_test[i, 1])
+                        })
+                else:
+                     max_probs = np.max(probs, axis=1)
+                     max_gt = np.max(gt_probs_test, axis=1)
+                     for i in range(min(len(probs), 50)):
+                        uncertainty_data.append({
+                            'model': model_name, 'n_obs': n_obs, 'method': 'LPE',
+                            'judged_prob': float(max_probs[i]),
+                            'episteme': float(episteme[i]),
+                            'alea': float(alea[i]),
+                            'gt_prob': float(max_gt[i])
+                        })
+            except: pass
+
+            # 3. SVM
+            try:
+                if is_multiclass:
+                    clf = sksvm.SVC(kernel='linear', probability=True)
+                    clf.fit(X_obs, y_obs)
+                    probs = clf.predict_proba(X_probe_test)
+                else:
+                    res = pp.svm_probe(X_probe_test, X_obs, y_obs)
+                    probs = res['Judged probability']
+                
+                score = compute_auroc(y_probe_test, probs, is_multiclass)
+                auroc_results.append({
+                    'model': model_name, 'n_obs': n_obs, 'method': 'SVM', 
+                    'AUROC': score, 'task_type': scenario_name
+                })
+            except: pass
+
+            # 4. LP (Linear Probe - Logistic)
+            try:
+                probs = compute_lpr_probs(X_probe_test, X_obs, y_obs, gt_probs_test.shape[1])
+                score = compute_auroc(y_probe_test, probs, is_multiclass)
+                auroc_results.append({
+                    'model': model_name, 'n_obs': n_obs, 'method': 'LP', 
+                    'AUROC': score, 'task_type': scenario_name
+                })
+            except: pass
+            
     return pd.DataFrame(auroc_results), pd.DataFrame(uncertainty_data)
 
 def simulate_ambiguous_data(embeddings_dict, labels_dict, task_key):
     """Generate synthetic ambiguous data by interpolating centroids."""
     print(f"Simulating ambiguous data for {task_key}...")
-    X_emb = onp.array(embeddings_dict['M1']) # Standard numpy
+    # Handle both dict of embeddings and single array if passed (for M1)
+    if 'M1' in embeddings_dict:
+        X_emb = onp.array(embeddings_dict['M1'])
+    else:
+        # If passed direct array (hack)
+        X_emb = onp.array(list(embeddings_dict.values())[0])
+        
     y_full = labels_dict[task_key]
     
     # Convert to standard numpy
@@ -574,11 +698,9 @@ def simulate_ambiguous_data(embeddings_dict, labels_dict, task_key):
                 probs_all = np.array(unc['categorical_mu'])
                 jp = probs_all[:, 1] 
                 
-                # Episteme: For multiclass, let's use Max Probability as a simple proxy
-                ep = np.max(probs_all, axis=1)
-                
-                # Alea: Placeholder
-                al = np.zeros_like(jp) 
+                # Extract actual uncertainty metrics
+                ep = np.array(unc['Episteme']).flatten()
+                al = np.array(unc['Alea']).flatten()
                 
             else:
                 # Binary GPP
@@ -603,8 +725,8 @@ def simulate_ambiguous_data(embeddings_dict, labels_dict, task_key):
                 unc = ppm.lpe_multiclass(X_sim, X_tr_sub, y_tr_sub, repeats=20)
                 probs_all = np.array(unc['categorical_mu'])
                 jp = probs_all[:, 1]
-                ep = np.max(probs_all, axis=1) # Proxy
-                al = np.zeros_like(jp)
+                ep = np.array(unc['Episteme']).flatten()
+                al = np.array(unc['Alea']).flatten()
             else:
                 unc = pp.lpe(X_sim, X_tr_sub, y_tr_sub)
                 jp = np.array(unc['Judged probability']).flatten()
@@ -625,23 +747,29 @@ def simulate_ambiguous_data(embeddings_dict, labels_dict, task_key):
 
 def main():
     print("Starting main...", flush=True)
+    print_gpu_memory()
     print("Loading Data...", flush=True)
     try:
         f = h5py.File('3dshapes.h5', 'r')
-        # Use full dataset or very large subset for dense plots
-        # The dataset has 480,000 images. 
-        # Set to 100000 for cluster runs
-        N_SUBSET = 100000
-        print(f"Subsetting to {N_SUBSET} samples...", flush=True)
-        indices = np.random.choice(480000, N_SUBSET, replace=False)
-        indices.sort()
-        print("Reading images...", flush=True)
-        images = f['images'][indices]
-        print("Reading labels...", flush=True)
-        labels_raw = f['labels'][indices]
+        N_SUBSET = 1000
         
-        print("Normalizing images...", flush=True)
-        images = images.astype(np.float32) / 255.0
+        if N_SUBSET:
+            print(f"Subsetting to {N_SUBSET} samples...", flush=True)
+            indices = np.random.choice(480000, N_SUBSET, replace=False)
+            indices.sort()
+            print("Reading images...", flush=True)
+            images = f['images'][indices]
+            print("Reading labels...", flush=True)
+            labels_raw = f['labels'][indices]
+        else:
+            print("Using FULL dataset...", flush=True)
+            print("Reading images...", flush=True)
+            images = f['images'][:]
+            print("Reading labels...", flush=True)
+            labels_raw = f['labels'][:]
+        
+        print("Skipping upfront normalization (doing it on GPU)...", flush=True)
+        
         labels_dict = ontology.get_concept_labels(labels_raw)
         
         # 3-class labels
@@ -655,83 +783,127 @@ def main():
         print(f"Data Load Error: {e}")
         return
 
-    # Train Models
-    print("Training CNNs...")
-    embeddings_dict = {}
-    # Train M1 (color+shape), M2 (shape), M3 (color)
-    # Simplified: Just training M1 for full demo to save time, 
-    # but normally we train all 3. Let's train all 3 fast (1 epoch).
-    for m, k in [('M1', 64), ('M2', 8), ('M3', 8)]:
-        print(f"  {m}...")
+    # --- SEQUENTIAL PROCESSING ---
+    
+    # Containers for final aggregation
+    all_auroc_bin = pd.DataFrame()
+    all_unc_bin = pd.DataFrame()
+    all_auroc_multi = pd.DataFrame()
+    all_unc_multi = pd.DataFrame()
+    
+    # We need M1 embeddings to persist as Teacher
+    X_emb_teacher = None
+    
+    models_config = [('M1', 64), ('M2', 8), ('M3', 8)]
+    
+    for m, k in models_config:
+        print(f"\n=== Processing Model {m} ===", flush=True)
+        
+        # 1. Train & Embed
+        print(f"Training {m}...")
         y = labels_dict[m]
         Xt, Xte, yt, yte = train_test_split(images, y, test_size=0.2, random_state=42)
         state = cnn_model.train_model(Xt, yt, Xte, yte, num_classes=k, num_epochs=1, batch_size=64, verbose=False)
-        embeddings_dict[m] = cnn_model.get_embeddings(state, images) # Get all embeddings
+        
+        print(f"Generating Embeddings for {m}...")
+        X_emb_current = get_embeddings_batched(state, images)
+        
+        # Save M1 as teacher
+        if m == 'M1':
+            X_emb_teacher = X_emb_current
+            
+        # 2. Run Binary Experiment
+        print(f"Running Binary Experiment for {m}...")
+        res_auroc, res_unc = run_experiment_single_model(
+            "Binary_P1_Floor", 'P1_floor', False, 
+            m, X_emb_current, X_emb_teacher, labels_dict['P1_floor']
+        )
+        all_auroc_bin = pd.concat([all_auroc_bin, res_auroc])
+        all_unc_bin = pd.concat([all_unc_bin, res_unc])
+        
+        # 3. Run Multiclass Experiment
+        # Filter for 3-class subset
+        m3_mask = labels_raw[:, 4] < 3
+        
+        X_emb_3c = X_emb_current[m3_mask]
+        X_teach_3c = X_emb_teacher[m3_mask]
+        y_3c = labels_dict['P2_shape_3class']
+        
+        print(f"Running Multiclass Experiment for {m}...")
+        res_auroc_m, res_unc_m = run_experiment_single_model(
+            "Multi_P2_Shape", 'P2_shape_3class', True,
+            m, X_emb_3c, X_teach_3c, y_3c
+        )
+        all_auroc_multi = pd.concat([all_auroc_multi, res_auroc_m])
+        all_unc_multi = pd.concat([all_unc_multi, res_unc_m])
+        
+        # 4. Manifold Plot (Only for M1)
+        if m == 'M1':
+            print("Generating Manifold Plot (M1)...")
+            X_tr, X_te, y_tr, y_te = train_test_split(X_emb_3c, y_3c, train_size=100, test_size=200, stratify=y_3c, random_state=99)
+            y_tr_oh = jax.nn.one_hot(y_tr, 3)
+            unc = ppm.gpp_multiclass(X_te, X_tr, y_tr_oh, num_classes=3)
+            probs = np.array(unc['categorical_mu'])
+            
+            # Create directory for manifold outputs
+            manifold_dir = "results/results_manifold"
+            os.makedirs(manifold_dir, exist_ok=True)
+            
+            # 2D Plot
+            plot_dirichlet_manifold(probs, "GPP Dirichlet Manifold (3-Class Shape)", 
+                                   os.path.join(manifold_dir, "figure_manifold_3class_2d.png"))
+            
+            # 3D Plot
+            plot_dirichlet_manifold_3d(probs, "GPP Dirichlet Manifold 3D (3-Class Shape)", 
+                                      os.path.join(manifold_dir, "figure_manifold_3class_3d.png"),
+                                      save_data_path=os.path.join(manifold_dir, "manifold_probs.csv"))
+            
+            # Simulation (Only M1)
+            print("Simulating Ambiguity (M1)...")
+            dummy_dict = {'M1': X_emb_current}
+            df_sim_bin = simulate_ambiguous_data(dummy_dict, labels_dict, 'P1_floor')
+            if not df_sim_bin.empty:
+                os.makedirs('results/csv', exist_ok=True)
+                df_sim_bin.to_csv('results/csv/results_jax_sim_binary.csv', index=False)
+                
+            # Multiclass Sim
+            emb_dict_3c = {'M1': X_emb_3c}
+            lab_dict_3c = {'P2_shape_3class': y_3c}
+            df_sim_multi = simulate_ambiguous_data(emb_dict_3c, lab_dict_3c, 'P2_shape_3class')
+            if not df_sim_multi.empty:
+                os.makedirs('results/csv', exist_ok=True)
+                df_sim_multi.to_csv('results/csv/results_jax_sim_multi.csv', index=False)
 
-    # --- 1. BINARY EXPERIMENT (P1_floor) ---
-    df_auroc_bin, df_unc_bin = run_experiment(
-        "Binary_P1_Floor", 'P1_floor', False, embeddings_dict, labels_dict
-    )
+        # 5. Cleanup
+        print(f"Cleaning up {m}...", flush=True)
+        if m != 'M1':
+            del X_emb_current
+            gc.collect()
+            
+    # Save Aggregate Results
+    os.makedirs('results/csv', exist_ok=True)
+    all_auroc_bin.to_csv('results/csv/results_jax_auroc_binary.csv', index=False)
+    all_unc_bin.to_csv('results/csv/results_jax_unc_binary.csv', index=False)
+    all_auroc_multi.to_csv('results/csv/results_jax_auroc_multi.csv', index=False)
+    all_unc_multi.to_csv('results/csv/results_jax_unc_multi.csv', index=False)
     
-    # Simulation for Binary Figures 5/6
-    df_sim_bin = simulate_ambiguous_data(embeddings_dict, labels_dict, 'P1_floor')
+    # Plotting (using aggregated data)
+    plot_figure4_lines(all_auroc_bin, "Binary")
+    # Load sim for plotting
+    try:
+        df_sim_bin = pd.read_csv('results/csv/results_jax_sim_binary.csv')
+        plot_figure5_uncertainty(all_unc_bin, df_sim_bin, "Binary")
+        plot_figure6_alea(all_unc_bin, df_sim_bin, "Binary")
+    except: pass
     
-    # Plot Binary Figures
-    print(f"Binary Stats - AUROC: {len(df_auroc_bin)} rows, Unc: {len(df_unc_bin)} rows, Sim: {len(df_sim_bin)} rows")
-    if not df_sim_bin.empty:
-        print("Binary Sim Head:\n", df_sim_bin.head())
-    
-    plot_figure4_lines(df_auroc_bin, "Binary")
-    plot_figure5_uncertainty(df_unc_bin, df_sim_bin, "Binary")
-    plot_figure6_alea(df_unc_bin, df_sim_bin, "Binary")
-
-    # --- 2. MULTICLASS EXPERIMENT (P2_shape_3class) ---
-    # Filter embeddings to only include 3-class subset
-    m3_mask = labels_raw[:, 4] < 3
-    emb_dict_3c = {k: v[m3_mask] for k, v in embeddings_dict.items()}
-    lab_dict_3c = {'P2_shape_3class': labels_dict['P2_shape_3class']} # Already masked in get_3class... wait.
-    # labels_dict['P2_shape_3class'] is shorter than images!
-    # We need to be careful. labels_dict['P2_shape_3class'] was created from labels_raw
-    # But we need to mask embeddings similarly.
-    
-    df_auroc_multi, df_unc_multi = run_experiment(
-        "Multi_P2_Shape", 'P2_shape_3class', True, emb_dict_3c, lab_dict_3c
-    )
-    
-    # Plot Multiclass Figures (Figure 4 mainly)
-    plot_figure4_lines(df_auroc_multi, "Multiclass")
-    
-    # Generate Multiclass Uncertainty Figures (Figs 5/6)
-    # Simulating "ambiguity" for multiclass:
-    # We can simulate ambiguity between Class 0 and Class 1 in the 3-class setting
-    # This is enough to test if the Dirichlet probe behaves rationally on the simplex edge.
-    print("Simulating ambiguous data for Multiclass P2_shape...")
-    df_sim_multi = simulate_ambiguous_data(emb_dict_3c, lab_dict_3c, 'P2_shape_3class')
-    
-    print(f"Multi Stats - AUROC: {len(df_auroc_multi)} rows, Unc: {len(df_unc_multi)} rows, Sim: {len(df_sim_multi)} rows")
-    
-    if not df_sim_multi.empty:
-        print("Multi Sim Head:\n", df_sim_multi.head())
-        plot_figure5_uncertainty(df_unc_multi, df_sim_multi, "Multiclass")
-        plot_figure6_alea(df_unc_multi, df_sim_multi, "Multiclass")
-    else:
-        print("Skipping Multiclass Figs 5/6 (Simulation failed)")
-
-    # --- 3. MANIFOLD PLOT ---
-    print("Generating Manifold Plot...")
-    # Use M1 embeddings on 3-class task
-    X_emb = emb_dict_3c['M1']
-    y = lab_dict_3c['P2_shape_3class']
-    X_tr, X_te, y_tr, y_te = train_test_split(X_emb, y, train_size=100, test_size=200, stratify=y, random_state=99)
-    
-    y_tr_oh = jax.nn.one_hot(y_tr, 3)
-    unc = ppm.gpp_multiclass(X_te, X_tr, y_tr_oh, num_classes=3)
-    probs = np.array(unc['categorical_mu'])
-    
-    plot_dirichlet_manifold(probs, "GPP Dirichlet Manifold (3-Class Shape)", "figure_manifold_3class.png")
+    plot_figure4_lines(all_auroc_multi, "Multiclass")
+    try:
+        df_sim_multi = pd.read_csv('results/csv/results_jax_sim_multi.csv')
+        plot_figure5_uncertainty(all_unc_multi, df_sim_multi, "Multiclass")
+        plot_figure6_alea(all_unc_multi, df_sim_multi, "Multiclass")
+    except: pass
 
     print("Done.")
 
 if __name__ == "__main__":
-    os.environ['JAX_PLATFORM_NAME'] = 'cpu'
     main()

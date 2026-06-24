@@ -1,0 +1,28 @@
+Running Step 2 Binary Experiments (4 Variations) on CPU...
+=== Step 2 Binary: Experiments (5 Variations) ===
+
+--- Experiment 1: Context (Unprompted) ---
+Balancing Training Set (Binary)...
+Original counts: Non-Change=5662, Change=1914
+Balancing dataset: Reducing Non-Change to match Change (1914 samples).
+
+--- Experiment 2: Context + Quality (Unprompted) ---
+Balancing Training Set (Binary)...
+Original counts: Non-Change=5662, Change=1914
+Balancing dataset: Reducing Non-Change to match Change (1914 samples).
+
+--- Experiment 3: Context (Prompted) ---
+Balancing Training Set (Binary)...
+Original counts: Non-Change=5662, Change=1914
+Balancing dataset: Reducing Non-Change to match Change (1914 samples).
+
+--- Experiment 4: Context + Quality (Prompted) ---
+Balancing Training Set (Binary)...
+Original counts: Non-Change=5662, Change=1914
+Balancing dataset: Reducing Non-Change to match Change (1914 samples).
+
+--- Experiment 5: Context + Few-Shot (Prompted) ---
+Balancing Training Set (Binary)...
+Original counts: Non-Change=5662, Change=1914
+Balancing dataset: Reducing Non-Change to match Change (1914 samples).
+Saved all results to annoMI/binary/results/qwen

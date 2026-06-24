@@ -79,8 +79,6 @@ def gpp_multiclass(
   
   measures = gp.dirichlet_gp_uncertainty(predictions, seed=seed, n=n)
   
-  jax.debug.print("Uncertainty dict keys: {}", list(measures.keys()))
-  
   # Return full measures (n' x K or n' x 1)
   return measures
 

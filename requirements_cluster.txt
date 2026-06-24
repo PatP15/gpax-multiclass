@@ -9,8 +9,11 @@ dm-tree
 chex
 optax
 flax
+orbax-checkpoint
 ml_collections
 absl-py
 wrapt
 typing_extensions
-
+# JAX (CPU only due to cluster environment constraints)
+jax==0.6.2
+jaxlib==0.6.2

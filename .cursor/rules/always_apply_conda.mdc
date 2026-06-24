@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+- When running commands in a terminal, we are on a compute node on a cluster operated by slurm.
+- Always be sure that the Python virtual environment source ~/.bashrc; conda activate gpax-multiclass;
+- If the conda fails, you may need to have run this first: module load python/3.10.12-fasrc01
+- If you are missing any modules, try running module avail to see if you need to know you need to load any modules.

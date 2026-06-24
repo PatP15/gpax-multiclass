@@ -1,0 +1,23 @@
+Running Step 2: LPE Baseline (Unprompted Context) on CPU...
+=== Step 2: LPE Baseline Experiments (Context + Few-Shot) ===
+Running LPE on Context+FewShot embeddings...
+Balancing Training Set...
+Balancing dataset: Reducing all classes to 816 samples.
+Avg Aleatoric Entropy: 0.34439900517463684
+Avg Info Gain: 0.2830946147441864
+Avg Aleatoric Entropy: 0.3305298984050751
+Avg Info Gain: 0.30936354398727417
+Avg Aleatoric Entropy: 0.2938084006309509
+Avg Info Gain: 0.38212862610816956
+Avg Aleatoric Entropy: 0.49333125352859497
+Avg Info Gain: 0.20228074491024017
+Avg Aleatoric Entropy: 0.6378897428512573
+Avg Info Gain: 0.0805451050400734
+Avg Aleatoric Entropy: 0.6994057893753052
+Avg Info Gain: 0.04891164228320122
+Avg Aleatoric Entropy: 0.7285606861114502
+Avg Info Gain: 0.036938998848199844
+Avg Aleatoric Entropy: 0.7287001013755798
+Avg Info Gain: 0.030060136690735817
+Saved results to annoMI/results/qwen/results_lpe.csv
+Saved raw data to annoMI/data/qwen/raw_lpe.npz

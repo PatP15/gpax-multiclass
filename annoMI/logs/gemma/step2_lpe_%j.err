@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/n/home01/ppuma/gpax-multiclass/annoMI/step2_exp_lpe.py", line 41, in <module>
+    main()
+  File "/n/home01/ppuma/gpax-multiclass/annoMI/step2_exp_lpe.py", line 11, in main
+    data = np.load(os.path.join(common.DATA_DIR, 'embeddings_prompted.npz'))
+  File "/n/home01/ppuma/.conda/envs/gpax-multiclass/lib/python3.10/site-packages/numpy/lib/_npyio_impl.py", line 451, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'annoMI/data/gemma/embeddings_prompted.npz'

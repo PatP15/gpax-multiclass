@@ -48,6 +48,9 @@ def create_train_state(rng, num_classes, learning_rate=1e-3):
 @jax.jit
 def train_step(state, batch_images, batch_labels):
     """Train for a single step."""
+    # Normalize on GPU
+    batch_images = batch_images.astype(jnp.float32) / 255.0
+    
     def loss_fn(params):
         logits = state.apply_fn({'params': params}, batch_images)
         loss = optax.softmax_cross_entropy_with_integer_labels(
@@ -65,6 +68,9 @@ def train_step(state, batch_images, batch_labels):
 
 @jax.jit
 def eval_step(state, batch_images, batch_labels):
+    # Normalize on GPU
+    batch_images = batch_images.astype(jnp.float32) / 255.0
+    
     logits = state.apply_fn({'params': state.params}, batch_images)
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch_labels).mean()
@@ -76,6 +82,9 @@ def eval_step(state, batch_images, batch_labels):
 
 @jax.jit
 def get_embeddings(state, batch_images):
+    # Normalize on GPU
+    batch_images = batch_images.astype(jnp.float32) / 255.0
+    
     _, embeddings = state.apply_fn({'params': state.params}, batch_images, return_embeddings=True)
     return embeddings
 
@@ -108,11 +117,25 @@ def train_model(X_train, y_train, X_val, y_val, num_classes, num_epochs=10, batc
         train_loss = np.mean([m['loss'] for m in batch_metrics])
         train_acc = np.mean([m['accuracy'] for m in batch_metrics])
         
-        # Validation
-        val_metrics = eval_step(state, X_val, y_val)
+        # Validation (Batched to avoid OOM)
+        val_loss_acc = []
+        val_acc_acc = []
+        
+        val_batch_size = 1024 # Larger batch size for eval
+        num_val = X_val.shape[0]
+        
+        for i in range(0, num_val, val_batch_size):
+            batch_val = X_val[i:i+val_batch_size]
+            batch_y = y_val[i:i+val_batch_size]
+            m = eval_step(state, batch_val, batch_y)
+            val_loss_acc.append(m['loss'] * len(batch_val)) # Weighted average later
+            val_acc_acc.append(m['accuracy'] * len(batch_val))
+            
+        val_loss = np.sum(val_loss_acc) / num_val
+        val_acc = np.sum(val_acc_acc) / num_val
         
         if verbose:
-            print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Val Loss: {val_metrics['loss']:.4f}, Val Acc: {val_metrics['accuracy']:.4f}")
+            print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
             
     return state
 

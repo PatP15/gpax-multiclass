@@ -482,13 +482,19 @@ def classifier_samples_uncertainty_multiclass(p_samples):
   jax.debug.print("Avg Aleatoric Entropy: {}", jnp.mean(categorical_entropy))
   jax.debug.print("Avg Info Gain: {}", jnp.mean(info_gain))
   
+  # Episteme: Negative Entropy of the distribution of p (approximated as Gaussian)
+  # To match binary GPP, higher Episteme means higher certainty (lower variance).
+  # We use the sum of marginal entropies as an upper bound approximation for entropy of p.
+  var_safe = jnp.maximum(var, 1e-32)
+  approx_entropy = 0.5 * jnp.sum(jnp.log(2 * jnp.pi * jnp.e * var_safe), axis=1, keepdims=True)
+  
   return {
       'epistemic_var': var,  # n' x K
       'categorical_mu': mu,  # n' x K
       'expected_aleatory_entropy': categorical_entropy,  # n' x 1
       'information_gain': info_gain,  # n' x 1
       'Alea': categorical_entropy,
-      'Episteme': info_gain,
+      'Episteme': -approx_entropy, # Higher means more concentrated p
       'Judged probability': mu,
   }
 

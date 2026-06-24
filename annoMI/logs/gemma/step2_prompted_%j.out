@@ -1,0 +1,544 @@
+Running Step 2: Prompted Experiments (Context & Context+Quality & Few-Shot) on CPU...
+=== Step 2: Experiment 2 (Context - Prompted) ===
+Balancing Training Set...
+Balancing dataset: Reducing all classes to 816 samples.
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(50, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(50, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(50, dtype=int32), Array(64, dtype=int32)), labels: (Array(50, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [0.00414954 0.7645872  0.23126343]
+Avg Aleatoric Entropy: 0.28192242980003357
+Avg Info Gain: 0.032430268824100494
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(100, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(100, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(100, dtype=int32), Array(64, dtype=int32)), labels: (Array(100, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [0.00088719 0.85733026 0.14178264]
+Avg Aleatoric Entropy: 0.3465251326560974
+Avg Info Gain: 0.0264357328414917
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(250, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(250, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(250, dtype=int32), Array(64, dtype=int32)), labels: (Array(250, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [3.6069803e-04 9.7314626e-01 2.6493156e-02]
+Avg Aleatoric Entropy: 0.3305213451385498
+Avg Info Gain: 0.01473553292453289
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]]
+Input y shape: (Array(500, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(500, dtype=int32), Array(64, dtype=int32)), labels: (Array(500, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [1.3786345e-04 9.9311948e-01 6.7424970e-03]
+Avg Aleatoric Entropy: 0.3717631995677948
+Avg Info Gain: 0.007697276305407286
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]]
+Input y shape: (Array(1000, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+One-hot y shape: (Array(1000, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(1000, dtype=int32), Array(64, dtype=int32)), labels: (Array(1000, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Mean prob (first query): [9.5463736e-05 9.9099392e-01 8.9106988e-03]
+Avg Aleatoric Entropy: 0.4543386399745941
+Avg Info Gain: 0.004797570873051882
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(1500, dtype=int32), Array(1, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+One-hot y shape: (Array(1500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(1500, dtype=int32), Array(64, dtype=int32)), labels: (Array(1500, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [4.1518026e-04 9.7361588e-01 2.5968902e-02]
+Avg Aleatoric Entropy: 0.521310031414032
+Avg Info Gain: 0.003757118945941329
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(2000, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(2000, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(2000, dtype=int32), Array(64, dtype=int32)), labels: (Array(2000, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Mean prob (first query): [5.6968490e-04 9.5465547e-01 4.4774927e-02]
+Avg Aleatoric Entropy: 0.570527195930481
+Avg Info Gain: 0.003051913110539317
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]]
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(2400, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(2400, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(2400, dtype=int32), Array(64, dtype=int32)), labels: (Array(2400, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [5.4222945e-04 9.4789886e-01 5.1558863e-02]
+Avg Aleatoric Entropy: 0.5969684720039368
+Avg Info Gain: 0.0026762571651488543
+Saved results to annoMI/results/gemma/results_exp2_prompted.csv
+Saved raw data to annoMI/data/gemma/raw_exp2_prompted.npz
+=== Step 2: Experiment 4 (Context + Quality - Prompted) ===
+Balancing Training Set...
+Balancing dataset: Reducing all classes to 816 samples.
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(50, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(50, dtype=int32), Array(3, dtype=int32))
+Starting prediction for 3 classes
+Observed shape: (Array(50, dtype=int32), Array(64, dtype=int32)), labels: (Array(50, dtype=int32),)
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]]
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [8.0698548e-04 9.5428073e-01 4.4912256e-02]
+Avg Aleatoric Entropy: 0.29987213015556335
+Avg Info Gain: 0.030217546969652176
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(100, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(100, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(100, dtype=int32), Array(64, dtype=int32)), labels: (Array(100, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [2.7188449e-04 9.8907483e-01 1.0653252e-02]
+Avg Aleatoric Entropy: 0.3349786102771759
+Avg Info Gain: 0.022117849439382553
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+Input y shape: (Array(250, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(250, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(250, dtype=int32), Array(64, dtype=int32)), labels: (Array(250, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [2.5199648e-04 9.9800545e-01 1.7426150e-03]
+Avg Aleatoric Entropy: 0.31245264410972595
+Avg Info Gain: 0.011927398853003979
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Extracted 3 latent GPs
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(500, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(500, dtype=int32), Array(64, dtype=int32)), labels: (Array(500, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [6.1253646e-05 9.9934673e-01 5.9199950e-04]
+Avg Aleatoric Entropy: 0.3620399236679077
+Avg Info Gain: 0.007066630758345127
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Starting prediction for 3 classes
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]]
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(1000, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(1000, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(1000, dtype=int32), Array(64, dtype=int32)), labels: (Array(1000, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [1.3465656e-04 9.9217033e-01 7.6951357e-03]
+Avg Aleatoric Entropy: 0.4522944986820221
+Avg Info Gain: 0.004613205324858427
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(1500, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(1500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(1500, dtype=int32), Array(64, dtype=int32)), labels: (Array(1500, dtype=int32),)
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [7.0380839e-04 9.7415990e-01 2.5136419e-02]
+Avg Aleatoric Entropy: 0.5085856318473816
+Avg Info Gain: 0.0034879648592323065
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(2000, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(2000, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Observed shape: (Array(2000, dtype=int32), Array(64, dtype=int32)), labels: (Array(2000, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [8.8695931e-04 9.5169961e-01 4.7413412e-02]
+Avg Aleatoric Entropy: 0.5689923763275146
+Avg Info Gain: 0.0029535475187003613
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]]
+Input y shape: (Array(2400, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(2400, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(2400, dtype=int32), Array(64, dtype=int32)), labels: (Array(2400, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [9.0413477e-04 9.4212931e-01 5.6966610e-02]
+Avg Aleatoric Entropy: 0.5967905521392822
+Avg Info Gain: 0.0025997187476605177
+Saved results to annoMI/results/gemma/results_exp4_prompted_quality.csv
+Saved raw data to annoMI/data/gemma/raw_exp4_prompted_quality.npz
+=== Step 2: Experiment 2 (Context + Few-Shot) ===
+Balancing Training Set...
+Balancing dataset: Reducing all classes to 816 samples.
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Extracted 3 latent GPs
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(50, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(50, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Observed shape: (Array(50, dtype=int32), Array(64, dtype=int32)), labels: (Array(50, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [0.0085603 0.9040372 0.0874026]
+Avg Aleatoric Entropy: 0.32567936182022095
+Avg Info Gain: 0.045370280742645264
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Extracted 3 latent GPs
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(100, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(100, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(100, dtype=int32), Array(64, dtype=int32)), labels: (Array(100, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [0.00542396 0.97770983 0.01686615]
+Avg Aleatoric Entropy: 0.36219075322151184
+Avg Info Gain: 0.03497760742902756
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+Input y shape: (Array(250, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+One-hot y shape: (Array(250, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(250, dtype=int32), Array(64, dtype=int32)), labels: (Array(250, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [0.00135632 0.99295086 0.00569291]
+Avg Aleatoric Entropy: 0.3136735260486603
+Avg Info Gain: 0.015824927017092705
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Extracted 3 latent GPs
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]]
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(500, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(500, dtype=int32), Array(64, dtype=int32)), labels: (Array(500, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [2.1504212e-04 9.9899608e-01 7.8891945e-04]
+Avg Aleatoric Entropy: 0.33287426829338074
+Avg Info Gain: 0.007901351898908615
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(1000, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(1000, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Observed shape: (Array(1000, dtype=int32), Array(64, dtype=int32)), labels: (Array(1000, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [1.1381724e-04 9.9789125e-01 1.9949719e-03]
+Avg Aleatoric Entropy: 0.39718103408813477
+Avg Info Gain: 0.004607367794960737
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(1500, dtype=int32), Array(1, dtype=int32))
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 0.1 5.1]]
+One-hot y shape: (Array(1500, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(1500, dtype=int32), Array(64, dtype=int32)), labels: (Array(1500, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Mean prob (first query): [2.618571e-04 9.902857e-01 9.452465e-03]
+Avg Aleatoric Entropy: 0.44713857769966125
+Avg Info Gain: 0.0034310442861169577
+Starting GPP Multiclass...
+Starting prediction for 3 classes
+Extracted 3 latent GPs
+Alpha values (first 5): [[5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(2000, dtype=int32), Array(1, dtype=int32))
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+One-hot y shape: (Array(2000, dtype=int32), Array(3, dtype=int32))
+Observed shape: (Array(2000, dtype=int32), Array(64, dtype=int32)), labels: (Array(2000, dtype=int32),)
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [4.3322350e-04 9.8428458e-01 1.5282188e-02]
+Avg Aleatoric Entropy: 0.4916881322860718
+Avg Info Gain: 0.002781480550765991
+Starting GPP Multiclass...
+Extracted 3 latent GPs
+Starting prediction for 3 classes
+Class 2 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Input y shape: (Array(1, dtype=int32), Array(3, dtype=int32))
+Alpha values (first 5): [[0.1 0.1 5.1]
+ [0.1 5.1 0.1]
+ [5.1 0.1 0.1]
+ [0.1 5.1 0.1]
+ [0.1 0.1 5.1]]
+Alpha values (first 5): [[0.1 0.1 0.1]]
+Stacked latent mu: (Array(973, dtype=int32), Array(3, dtype=int32)), var: (Array(973, dtype=int32), Array(3, dtype=int32))
+Input y shape: (Array(2400, dtype=int32), Array(1, dtype=int32))
+One-hot y shape: (Array(2400, dtype=int32), Array(3, dtype=int32))
+Probability samples shape: (Array(973, dtype=int32), Array(3, dtype=int32), Array(1000, dtype=int32))
+Observed shape: (Array(2400, dtype=int32), Array(64, dtype=int32)), labels: (Array(2400, dtype=int32),)
+Query shape: (Array(973, dtype=int32), Array(64, dtype=int32))
+Class 0 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Class 1 prediction: mu shape (Array(973, dtype=int32), Array(1, dtype=int32)), var shape (Array(973, dtype=int32), Array(1, dtype=int32))
+Mean prob (first query): [3.2688415e-04 9.8358798e-01 1.6085161e-02]
+Avg Aleatoric Entropy: 0.5205004215240479
+Avg Info Gain: 0.002451928099617362
+Saved results to annoMI/results/gemma/results_exp2_fewshot.csv
+Saved raw data to annoMI/data/gemma/raw_exp2_fewshot.npz

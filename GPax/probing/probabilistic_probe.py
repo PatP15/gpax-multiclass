@@ -21,7 +21,9 @@ import numpy as np
 import sklearn.linear_model as sklm
 
 
-@jax.jit
+from functools import partial
+
+@partial(jax.jit, static_argnames=['n'])
 def gpp(
     x_query,
     x_observed=None,

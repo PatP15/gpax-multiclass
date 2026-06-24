@@ -53,3 +53,6 @@ venv.bak/
 *_results.csv
 terminals/
 
+
+huggingfacetoken.txt
+*.npy

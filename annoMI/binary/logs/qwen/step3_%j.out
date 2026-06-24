@@ -1,0 +1,9 @@
+Running Step 3 Binary Visualization on CPU...
+=== Step 3 Binary: Visualization ===
+Saved accuracy plot to annoMI/binary/figures/qwen/accuracy_comparison_binary.png
+Saved AUROC plot to annoMI/binary/figures/qwen/auroc_binary.png
+Saved CM to annoMI/binary/figures/qwen/cm_context_n2400_binary_balanced.png
+Saved CM to annoMI/binary/figures/qwen/cm_context_qual_n2400_binary_balanced.png
+Saved CM to annoMI/binary/figures/qwen/cm_prompted_n2400_binary_balanced.png
+Saved CM to annoMI/binary/figures/qwen/cm_prompted_qual_n2400_binary_balanced.png
+Saved CM to annoMI/binary/figures/qwen/cm_fewshot_n2400_binary_balanced.png

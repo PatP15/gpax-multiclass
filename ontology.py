@@ -65,13 +65,18 @@ def get_concept_labels(labels_raw):
     # Range: 0 to 63
     y_m1 = (shape * 16 + scale_large * 8 + floor_warm * 4 + wall_warm * 2 + obj_warm * 1).astype(int)
     
-    # M.2: 8 labels = Shape(4) * Scale(2)
-    # Order: Shape(4) * 2 + Scale(2)
-    y_m2 = (shape * 2 + scale_large).astype(int)
+    # Define Concept Labels
+    # Color Labels (Floor, Wall, Obj)
+    y_color = (floor_warm * 4 + wall_warm * 2 + obj_warm).astype(int)
     
-    # M.3: 8 labels = Floor(2) * Wall(2) * Obj(2)
-    # Order: Floor(2) * 4 + Wall(2) * 2 + Obj(2)
-    y_m3 = (floor_warm * 4 + wall_warm * 2 + obj_warm).astype(int)
+    # Shape/Scale Labels
+    y_shape = (shape * 2 + scale_large).astype(int)
+    
+    # Assign to Models per Paper Definition
+    # M.2 = Geometry/Shape
+    # M.3 = Color
+    y_m2 = y_shape
+    y_m3 = y_color
     
     # --- Probing Task Labels ---
     
@@ -95,5 +100,45 @@ def get_concept_labels(labels_raw):
         'P1_obj': y_p1_obj,
         'P2_scale': y_p2_scale,
         'P2_shape': y_p2_shape
+    }
+
+def get_primitive_labels(labels_raw):
+    """
+    Generate raw primitive labels for 'Original Multiclass' model.
+    We can't easily train on 32,000 classes.
+    Instead, we'll just return the raw factors to allow multi-head training if needed,
+    or define a specific primitive task.
+    
+    For now, let's define a label set that just encodes the raw primitives 
+    (Floor(10) * Wall(10) * Obj(10) * Scale(8) * Shape(4)) if we wanted to.
+    
+    But typically, "Original Multiclass" in the context of GPP means training 
+    on the specific factors of interest as multiclass problems.
+    
+    Let's assume we just want to train on the raw factors directly.
+    We can return them individually.
+    """
+    floor_hue = labels_raw[:, 0] # 10 values
+    # Map float values to 0-9 indices
+    # The values are likely linspace(0, 1, 10)
+    def map_to_int(arr, n_bins):
+        # Find unique values and map to 0..n-1
+        uniques = np.unique(arr)
+        mapping = {val: i for i, val in enumerate(uniques)}
+        return np.array([mapping[v] for v in arr])
+        
+    # Assuming subset might not have all, but full dataset does.
+    # Ideally we hardcode the 10 values.
+    # 0, 0.1, 0.2... 0.9
+    
+    # For simplicity, we'll just use this function to get integer labels for probing P1 (Color) as multiclass.
+    # P1_floor_multi: 10 classes.
+    
+    return {
+        'floor_hue_raw': labels_raw[:, 0],
+        'wall_hue_raw': labels_raw[:, 1],
+        'obj_hue_raw': labels_raw[:, 2],
+        'scale_raw': labels_raw[:, 3],
+        'shape_raw': labels_raw[:, 4].astype(int)
     }
 

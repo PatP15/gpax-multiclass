@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+You are currently running on a slurm cluster. If you want to run a big job that's not testing simple functionality or auditing datasets, I would like you to do srun or sbatch to submit the job. The two partitions you can use are gpu_test and test. Save the commands that you run.
