@@ -11,8 +11,19 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForVision2Seq
 from tqdm import tqdm
 
-# Add project root to path for GPax imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add repo root (the dir containing GPax/) to sys.path, robust to this file's location.
+def _find_repo_root(start):
+    d = os.path.dirname(os.path.abspath(start))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, 'GPax')):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.abspath(start))
+
+_REPO_ROOT = _find_repo_root(__file__)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+_HERE = os.path.dirname(os.path.abspath(__file__))
 
 # --- Constants & Configuration ---
 SEED = 42
@@ -36,7 +47,7 @@ def get_model_config():
 MODEL_NAME, MODEL_SUBFOLDER, MODEL_TYPE = get_model_config()
 
 # New Binary Directories
-BASE_DIR = "annoMI/binary"
+BASE_DIR = _HERE
 DATA_DIR = os.path.join(BASE_DIR, "data", MODEL_SUBFOLDER)
 RESULTS_DIR = os.path.join(BASE_DIR, "results", MODEL_SUBFOLDER)
 FIGURE_DIR = os.path.join(BASE_DIR, "figures", MODEL_SUBFOLDER)
@@ -104,7 +115,7 @@ def process_single_df(df, name="dataset"):
 
 def load_annomi_data():
     print("Loading AnnoMI datasets from local CSVs...")
-    base_data_dir = os.path.join("annoMI", "data")
+    base_data_dir = os.path.join(os.path.dirname(_HERE), "data")
     train_path = os.path.join(base_data_dir, "IC_AnnoMI.csv")
     test_path = os.path.join(base_data_dir, "IC-AnnoMI (test set).csv")
     
@@ -132,7 +143,7 @@ def load_model(model_name=MODEL_NAME):
     print(f"Loading model {model_name} (Type: {MODEL_TYPE})...")
     
     try:
-        with open("huggingfacetoken.txt", "r") as f:
+        with open(os.path.join(_REPO_ROOT, "huggingfacetoken.txt"), "r") as f:
             hf_token = f.read().strip()
     except FileNotFoundError:
         hf_token = True

@@ -19,5 +19,5 @@ module load python/3.10.12-fasrc01
 source ~/.bashrc
 conda activate gpax-multiclass
 
-echo "Running Step 3 Binary Visualization on CPU..."
-python -u annoMI/binary/step3_visualize_binary.py
+echo "Running Step 3: Visualization on CPU..."
+python -u experiments/annomi/step3_visualize.py

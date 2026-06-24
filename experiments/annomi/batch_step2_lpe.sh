@@ -21,4 +21,4 @@ source ~/.bashrc
 conda activate gpax-multiclass
 
 echo "Running Step 2: LPE Baseline (Unprompted Context) on CPU..."
-python -u annoMI/step2_exp_lpe.py
+python -u experiments/annomi/step2_exp_lpe.py

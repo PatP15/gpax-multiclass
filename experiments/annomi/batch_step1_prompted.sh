@@ -14,14 +14,12 @@ export PYTHONNOUSERSITE=1
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# Load modules (if needed, but prefer Conda)
-module load python/3.10.12-fasrc01 
+module load python/3.10.12-fasrc01
 module load cuda/12.4.1-fasrc01
 
-# Source Conda
 source ~/.bashrc
 conda activate gpax-multiclass
 
-# Run Step 1 Unprompted (Context, Context+Qual)
-echo "Running Step 1 (Process Data Unprompted)..."
-python -u annoMI/step1_process_data.py
+# Run Step 1 Prompted (Context, Context+Qual)
+echo "Running Step 1 (Process Data Prompted)..."
+python -u experiments/annomi/step1_process_data_prompted.py

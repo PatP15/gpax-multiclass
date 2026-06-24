@@ -21,6 +21,6 @@ export XLA_PYTHON_CLIENT_ALLOCATOR=platform
 
 # Run the verification script
 echo "Starting verification run with 1k subset..."
-JAX_PLATFORM_NAME=gpu python gpp_extended_verification.py
+JAX_PLATFORM_NAME=gpu python experiments/shapes3d/gpp_extended_verification.py
 echo "Verification run completed."
 

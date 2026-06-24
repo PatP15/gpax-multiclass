@@ -21,6 +21,6 @@ source ~/.bashrc
 conda activate gpax-multiclass
 
 echo "Running Step 2: Prompted Experiments (Context & Context+Quality & Few-Shot) on CPU..."
-python -u annoMI/step2_exp2_prompted.py
-python -u annoMI/step2_exp4_prompted_quality.py
-python -u annoMI/step2_exp2_fewshot.py
+python -u experiments/annomi/step2_exp2_prompted.py
+python -u experiments/annomi/step2_exp4_prompted_quality.py
+python -u experiments/annomi/step2_exp2_fewshot.py

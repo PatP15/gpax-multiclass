@@ -1,5 +1,20 @@
 import os
 import sys
+
+
+def _find_repo_root(start):
+    d = os.path.dirname(os.path.abspath(start))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, 'GPax')):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.abspath(start))
+
+
+_REPO_ROOT = _find_repo_root(__file__)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -15,11 +30,11 @@ from GPax.probing import probabilistic_probe as pp
 from GPax.probing import probabilistic_probe_multiclass as ppm
 
 # --- Constants & Config ---
-DATA_PATH = '3dshapes.h5'
-EMBEDDING_DIR = 'results/embeddings'
-CSV_DIR = 'results/csv'
-FIGURE_DIR = 'results/figures'
-MANIFOLD_DIR = 'results/results_manifold'
+DATA_PATH = os.path.join(_REPO_ROOT, '3dshapes.h5')
+EMBEDDING_DIR = os.path.join(_REPO_ROOT, 'results', 'embeddings')
+CSV_DIR = os.path.join(_REPO_ROOT, 'results', 'csv')
+FIGURE_DIR = os.path.join(_REPO_ROOT, 'results', 'figures')
+MANIFOLD_DIR = os.path.join(_REPO_ROOT, 'results', 'results_manifold')
 
 def ensure_dirs():
     """Create necessary directories."""

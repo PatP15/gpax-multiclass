@@ -21,4 +21,4 @@ source ~/.bashrc
 conda activate gpax-multiclass
 
 echo "Running Step 2 Binary Experiments (4 Variations) on CPU..."
-python -u annoMI/binary/step2_experiments_binary.py
+python -u experiments/annomi/binary/step2_experiments_binary.py

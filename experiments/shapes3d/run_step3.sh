@@ -16,13 +16,13 @@ conda activate gpax-multiclass
 export JAX_PLATFORMS=cpu
 
 echo "Generating Figure 4..."
-python step3_plot_figure4.py
+python experiments/shapes3d/step3_plot_figure4.py
 
 echo "Generating Figure 5..."
-python step3_plot_figure5.py
+python experiments/shapes3d/step3_plot_figure5.py
 
 echo "Generating Figure 6..."
-python step3_plot_figure6.py
+python experiments/shapes3d/step3_plot_figure6.py
 
 echo "Generating Manifold..."
-python step3_plot_manifold.py
+python experiments/shapes3d/step3_plot_manifold.py

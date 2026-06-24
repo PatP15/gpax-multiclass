@@ -43,6 +43,10 @@ venv.bak/
 *.swp
 *.swo
 
+# OS / misc
+.DS_Store
+.Rhistory
+
 # Project Specific
 3dshapes.h5
 *.png
