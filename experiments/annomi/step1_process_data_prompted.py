@@ -30,6 +30,7 @@ Analyze the context provided by the therapist's previous statement and the clien
 
 INPUT: Therapist: {therapist_text}
 Client: {client_text}
+Respond with only one word (Change, Sustain, or Neutral) and nothing else.
 OUTPUT:"""
 
 MOTIVATION_PROMPT_QUAL = """You are an expert psychotherapist and supervisor for Motivational Interviewing (MI) sessions. Your task is to analyze the following dialogue between a therapist and a client.
@@ -44,6 +45,7 @@ Analyze the context provided by the therapist's previous statement (annotated wi
 
 INPUT: Therapist: {therapist_text} (Quality: {quality})
 Client: {client_text}
+Respond with only one word (Change, Sustain, or Neutral) and nothing else.
 OUTPUT:"""
 
 # Few-Shot Examples (2 per class for Change, Sustain, Neutral)
@@ -95,6 +97,7 @@ Analyze the context provided by the therapist's previous statement and the clien
 Given the following input, output the class (Change Talk, Sustain Talk, or Neutral).
 INPUT: Therapist: {therapist_text}
 Client: {client_text}
+Respond with only one word (Change, Sustain, or Neutral) and nothing else.
 OUTPUT:"""
 
 def main():

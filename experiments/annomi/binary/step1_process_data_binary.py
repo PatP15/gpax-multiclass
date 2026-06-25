@@ -17,7 +17,7 @@ import gc
 import torch
 print("DEBUG: Imported torch", flush=True)
 
-INSTRUCTION = "choose one of the two options (change or non-change)"
+INSTRUCTION = "Classify the client's motivation. Respond with only one word (Change or Non-Change) and nothing else."
 
 # Define the Prompts
 MOTIVATION_PROMPT = """You are an expert psychotherapist and supervisor for Motivational Interviewing (MI) sessions. Your task is to analyze the following dialogue between a therapist and a client.
@@ -31,6 +31,7 @@ Analyze the context provided by the therapist's previous statement and the clien
 
 INPUT: Therapist: {therapist_text}
 Client: {client_text}
+Respond with only one word (Change or Non-Change) and nothing else.
 OUTPUT:"""
 
 MOTIVATION_PROMPT_QUAL = """You are an expert psychotherapist and supervisor for Motivational Interviewing (MI) sessions. Your task is to analyze the following dialogue between a therapist and a client.
@@ -44,6 +45,7 @@ Analyze the context provided by the therapist's previous statement (annotated wi
 
 INPUT: Therapist: {therapist_text} (Quality: {quality})
 Client: {client_text}
+Respond with only one word (Change or Non-Change) and nothing else.
 OUTPUT:"""
 
 # Few-Shot Examples (2 per class for Change, Non-Change)
@@ -84,6 +86,7 @@ Analyze the context provided by the therapist's previous statement and the clien
 Given the following input, output the class (Change Talk or Non-Change Talk).
 INPUT: Therapist: {therapist_text}
 Client: {client_text}
+Respond with only one word (Change or Non-Change) and nothing else.
 OUTPUT:"""
 
 def main():

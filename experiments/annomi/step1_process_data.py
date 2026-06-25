@@ -18,7 +18,7 @@ import torch
 print("DEBUG: Imported torch", flush=True)
 
 # Unprompted Instruction
-INSTRUCTION = "choose one of the three options (change, sustain, or neutral)"
+INSTRUCTION = "Classify the client's motivation. Respond with only one word (Change, Sustain, or Neutral) and nothing else."
 
 def main():
     print("=== Step 1: Process Data & Extract Embeddings (Unprompted Split) ===")
