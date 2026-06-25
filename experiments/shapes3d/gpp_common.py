@@ -18,7 +18,10 @@ if _REPO_ROOT not in sys.path:
 import numpy as np
 import jax
 import jax.numpy as jnp
-import h5py
+try:
+    import h5py  # only used by step1 (raw 3dshapes.h5); step2/step3 read .npy/.npz
+except ImportError:
+    h5py = None
 import sklearn.linear_model as sklm
 import sklearn.metrics as skm
 import sklearn.svm as sksvm
