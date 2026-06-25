@@ -8,7 +8,14 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from datasets import load_dataset
 import torch
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForVision2Seq
+from transformers import AutoTokenizer, AutoModelForCausalLM
+try:
+    from transformers import AutoModelForVision2Seq
+except ImportError:  # renamed in newer transformers (>=5.x)
+    try:
+        from transformers import AutoModelForImageTextToText as AutoModelForVision2Seq
+    except ImportError:
+        AutoModelForVision2Seq = None
 from tqdm import tqdm
 
 # Add repo root (the dir containing GPax/) to sys.path, robust to this file's location.
