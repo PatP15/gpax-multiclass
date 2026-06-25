@@ -45,10 +45,19 @@ def get_model_config():
     elif model_type == "gemma":
         model_name = "google/gemma-3-27b-it"
         subfolder = "gemma"
-    else: 
+    elif model_type == "qwen36":  # 2026 refresh (keep in sync with annomi_common.py)
+        model_name = "Qwen/Qwen3.6-27B"
+        subfolder = "qwen36"
+    elif model_type == "gemma4":
+        model_name = "google/gemma-4-31B-it"
+        subfolder = "gemma4"
+    elif model_type == "llama":
+        model_name = "meta-llama/Llama-3.3-70B-Instruct"
+        subfolder = "llama"
+    else:
         model_name = "Qwen/Qwen3-VL-30B-A3B-Thinking"
         subfolder = "qwen"
-        
+
     return model_name, subfolder, model_type
 
 MODEL_NAME, MODEL_SUBFOLDER, MODEL_TYPE = get_model_config()

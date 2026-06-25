@@ -499,7 +499,7 @@ def gp_uncertainty(latent_mu, latent_var, seed=0, n=int(1e6)):
   entropy = (
       norm_entropy
       + latent_mu
-      - 2 * jnp.mean(jnp.log(1 + jnp.exp(iid_samples)), axis=1, keepdims=True)
+      - 2 * jnp.mean(jax.nn.softplus(iid_samples), axis=1, keepdims=True)
   )
   ret.update({
       'epistemic_entropy': entropy,  # Entropy of each label distribution
