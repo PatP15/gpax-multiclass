@@ -38,6 +38,12 @@ def get_model_config():
     elif model_type == "qwen":
         model_name = "Qwen/Qwen3-VL-30B-A3B-Thinking"
         subfolder = "qwen"
+    elif model_type == "qwen36":  # 2026 refresh: dense 27B successor to Qwen3-VL-30B
+        model_name = "Qwen/Qwen3.6-27B"
+        subfolder = "qwen36"
+    elif model_type == "gemma4":  # 2026 refresh: dense 31B-it successor to gemma-3-27b-it
+        model_name = "google/gemma-4-31B-it"
+        subfolder = "gemma4"
     else: # Default to Gemma
         model_name = "google/gemma-3-27b-it"
         subfolder = "gemma"
@@ -193,6 +199,30 @@ def load_model(model_name=MODEL_NAME):
                     # model.to("cuda" if torch.cuda.is_available() else "cpu")
             return model, tokenizer
             
+        elif MODEL_TYPE in ("gemma4", "qwen36"):
+            # 2026 refresh: dense text LLMs. Robust CausalLM load (bf16); fall back to
+            # AutoModel if the (multimodal) config isn't a CausalLM. Text-only inputs;
+            # get_embeddings reads outputs.hidden_states[-1] either way.
+            tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, trust_remote_code=True)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name, device_map="auto", torch_dtype=torch.bfloat16,
+                    output_hidden_states=True, token=hf_token,
+                    low_cpu_mem_usage=True, trust_remote_code=True,
+                )
+            except Exception as e:
+                print(f"AutoModelForCausalLM failed ({e}); falling back to AutoModel.")
+                from transformers import AutoModel
+                model = AutoModel.from_pretrained(
+                    model_name, device_map="auto", torch_dtype=torch.bfloat16,
+                    output_hidden_states=True, token=hf_token,
+                    low_cpu_mem_usage=True, trust_remote_code=True,
+                )
+            model.eval()
+            return model, tokenizer
+
         else: # Llama and others
             tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
             tokenizer.pad_token = tokenizer.eos_token
