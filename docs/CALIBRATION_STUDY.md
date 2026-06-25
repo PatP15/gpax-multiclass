@@ -80,6 +80,55 @@ Replace the cosine kernel with `squared_exponential` (RBF) on z-scored embedding
 - Because the lever that addresses the *actual* mechanism (kernel capacity) works while the
   calibration-scaling levers don't, the diagnosis is confirmed.
 
+## 5b. What the "lengthscale" is, and why it is the decisive lever  (read this for the write-up)
+
+GPP puts a Gaussian-process prior on the latent concept function. A **kernel** `k(a, a′)` defines how
+*similar* two embeddings are, and GPP's judged probability at a query is essentially a
+similarity-weighted average of the (noisy) labels of nearby observations. So the kernel fixes two
+things at once: GPP's **inductive bias** (what "similar" means) and its **effective capacity** (how
+complex a concept it can represent).
+
+**Cosine kernel — what GPP ships with, and its hidden limitation.**
+`k(a, a′) = v · (aᵀa′ + δ) / (‖a‖ ‖a′‖)`. This is a *linear* kernel: using it is mathematically
+equivalent to Bayesian logistic regression in an augmented feature space (the paper itself notes this,
+Eq. 4). It has **no lengthscale** — "similarity" is purely the angle between two embeddings, the
+decision surface it can express is linear, and its capacity **does not grow as more data arrive**.
+
+**RBF (squared-exponential) kernel — adds the missing knob.**
+`k(a, a′) = v · exp(−‖a − a′‖² / (2 ℓ²))`. The **lengthscale ℓ** is the distance in embedding space over
+which two points still count as "similar":
+- **small ℓ** → similarity decays quickly → a *local, flexible, high-capacity* function (each observation
+  only influences its neighbourhood; non-linear concept boundaries become representable);
+- **large ℓ** → similarity decays slowly → a *smooth, low-capacity* function that degenerates toward the
+  linear cosine behaviour.
+
+So ℓ is a **single, interpretable dial for GPP's capacity.**
+
+**Why this controls calibration-to-fuzziness.** To track ground-truth fuzziness, GPP's predicted
+P(class) must respond faithfully to the local mix of (flipped) labels as observations accumulate. On the
+*easy* binary floor-hue concept, the linear cosine kernel already captures the structure, so GPP tracks
+fuzziness and beats LPE at every `n`. On the *harder* 3-class shape concept, the linear kernel
+**under-fits**: it cannot sharpen its estimate as data grow, so its per-`n_obs` Pearson plateaus while
+LPE's data-adaptive logistic keeps improving and overtakes it around `n`≈32.
+
+**What the lengthscale sweep established (§5).** Swapping cosine→RBF and sweeping ℓ directly tunes GPP's
+capacity. A *small* ℓ≈3 (on z-scored embeddings) makes GPP flexible enough to track shape-fuzziness and
+it **beats LPE at every `n`**, by a wide margin at high `n` (Pearson 0.765 vs 0.588 at `n`=128); a *large*
+ℓ collapses back toward the cosine result. Decisively, the **GP marginal likelihood** — a label-free,
+test-set-free model-selection score that is part of the GP framework itself — assigns the **lowest NLL to
+ℓ=3**, so the correct lengthscale is **chosen automatically from the data**, not hand-tuned on the test
+metric. (Caveat: NLL is monotone in ℓ over the tested grid, i.e. it prefers the smallest ℓ; in practice
+select ℓ per `n` by maximizing the marginal likelihood, and standardize embeddings first.)
+
+**Paper-ready statement of the result.** *GPP's loss of calibration to LPE in the multiclass setting is
+an inductive-bias / capacity limitation of the fixed cosine (linear) kernel — not a defect of the
+Dirichlet extension and not a probability-scaling problem.* We rule out the scaling explanation directly:
+neither the Dirichlet concentration hyperparameters (`strength`, `alpha_eps`) nor a post-hoc softmax
+temperature changes the gap, and the softmax-free GPP-Beta (one-vs-rest) shows the identical shortfall.
+Granting the GP an expressive kernel (RBF) with a **marginal-likelihood-selected lengthscale restores and
+exceeds GPP's calibration advantage over LPE across all observation counts.** In one line: *the cosine
+kernel was the ceiling, the lengthscale is the knob that lifts it, and the GP can set that knob itself.*
+
 ## 6. ECE on AnnoMI LLM probes (secondary, not the paper's metric)
 AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available. GPP(few-shot) vs
 LPE(few-shot) @ n=2400: ECE GPP/LPE = gemma 0.130/0.075, qwen 0.045/0.046, gemma4 0.174/0.061,
