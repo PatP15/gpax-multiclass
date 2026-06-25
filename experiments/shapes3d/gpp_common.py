@@ -73,9 +73,10 @@ def load_data(subset_size=None):
         
         return images, labels_raw, labels_dict
         
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        sys.exit(1)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise
 
 def get_3class_shape_labels(labels_raw):
     """Create 3-class shape labels from 4-class (use first 3 shapes: 0,1,2)."""

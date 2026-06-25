@@ -20,7 +20,19 @@ import gc
 
 warnings.filterwarnings('ignore')
 
-sys.path.append(os.getcwd())
+
+def _find_repo_root(start):
+    d = os.path.dirname(os.path.abspath(start))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, 'GPax')):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.abspath(start))
+
+
+_REPO_ROOT = _find_repo_root(__file__)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from GPax.probing import gp, gp_multiclass
 from GPax.probing import probabilistic_probe as pp

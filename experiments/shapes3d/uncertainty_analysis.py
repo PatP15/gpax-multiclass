@@ -10,8 +10,18 @@ import sys
 import os
 import h5py
 
-# Add project root to path
-sys.path.append(os.getcwd())
+# Add repo root (dir containing GPax/) to sys.path, robust to cwd/location.
+def _find_repo_root(start):
+    d = os.path.dirname(os.path.abspath(start))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, 'GPax')):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.abspath(start))
+
+_REPO_ROOT = _find_repo_root(__file__)
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from GPax.probing import gp, gp_multiclass
 from GPax.probing import probabilistic_probe as pp
@@ -22,7 +32,7 @@ def run_uncertainty_analysis():
     print("Starting Uncertainty Analysis (Figures 5 & 6)...")
     
     try:
-        f = h5py.File('3dshapes.h5', 'r')
+        f = h5py.File(os.path.join(_REPO_ROOT, '3dshapes.h5'), 'r')
         N_SUBSET = 2000
         indices = np.random.choice(480000, N_SUBSET, replace=False)
         indices.sort()
@@ -86,7 +96,7 @@ def run_uncertainty_analysis():
         plt.ylabel('Judged Probability')
         plt.title('Calibration / Correlation (Fig 5 Left)')
         plt.legend()
-        plt.savefig('fig5_correlation.png')
+        plt.savefig(os.path.join(_REPO_ROOT, 'fig5_correlation.png'))
         print("Saved fig5_correlation.png")
     except Exception as e:
         print(f"Correlation analysis failed: {e}")

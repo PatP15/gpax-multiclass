@@ -12,7 +12,7 @@ module load cuda/12.2.0-fasrc01 cudnn/8.9.2.26_cuda12-fasrc01
 
 # Activate conda environment
 # Explicitly source conda.sh to ensure conda command is available in subshell
-source ~/miniforge3/etc/profile.d/conda.sh || source ~/anaconda3/etc/profile.d/conda.sh || source ~/.bashrc
+source /n/sw/Miniforge3-24.11.3-0/etc/profile.d/conda.sh
 conda activate gpax-multiclass
 
 # JAX Memory allocation flags to prevent OOM/Segfaults

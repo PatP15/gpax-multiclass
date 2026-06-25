@@ -1,3 +1,7 @@
+# NOTE: this is the BINARY (change vs non-change) fork of ../annomi_common.py.
+# It is ~95% identical; the intentional differences are the label map (binary y_mot),
+# balance_dataset, and the binary training loop. KEEP get_model_config / load_model /
+# get_embeddings in sync with ../annomi_common.py (config drift previously caused a bug).
 import os
 import sys
 import gc
@@ -162,7 +166,7 @@ def load_model(model_name=MODEL_NAME):
         with open(os.path.join(_REPO_ROOT, "huggingfacetoken.txt"), "r") as f:
             hf_token = f.read().strip()
     except FileNotFoundError:
-        hf_token = True
+        hf_token = None
 
     try:
         if MODEL_TYPE == "gemma":
@@ -182,7 +186,6 @@ def load_model(model_name=MODEL_NAME):
             
         elif MODEL_TYPE == "qwen":
             try:
-                from transformers import Qwen2VLForConditionalGeneration # Fallback or similar
                 try:
                     from transformers import Qwen3VLMoeForConditionalGeneration
                     model_class = Qwen3VLMoeForConditionalGeneration

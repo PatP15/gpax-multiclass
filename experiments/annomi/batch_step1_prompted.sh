@@ -11,7 +11,6 @@ export HF_HOME=/n/netscratch/walsh_lab_seas/Everyone/ppuma/.cache/huggingface
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export JAX_PLATFORMS=cpu
 export PYTHONNOUSERSITE=1
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 module load python/3.10.12-fasrc01
@@ -19,6 +18,7 @@ module load cuda/12.4.1-fasrc01
 
 source ~/.bashrc
 conda activate gpax-multiclass
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 # Run Step 1 Prompted (Context, Context+Qual)
 echo "Running Step 1 (Process Data Prompted)..."

@@ -155,7 +155,7 @@ def load_model(model_name=MODEL_NAME):
         with open(os.path.join(_REPO_ROOT, "huggingfacetoken.txt"), "r") as f:
             hf_token = f.read().strip()
     except FileNotFoundError:
-        hf_token = True
+        hf_token = None
 
     try:
         if MODEL_TYPE == "gemma":
@@ -175,7 +175,6 @@ def load_model(model_name=MODEL_NAME):
             
         elif MODEL_TYPE == "qwen":
             try:
-                from transformers import Qwen2VLForConditionalGeneration # Fallback or similar
                 try:
                     from transformers import Qwen3VLMoeForConditionalGeneration
                     model_class = Qwen3VLMoeForConditionalGeneration
@@ -389,8 +388,8 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
             preds = np.argmax(probs, axis=1)
             
             # Uncertainty
-            epistemic = np.array(measures.get('Episteme', np.zeros_like(y_test)))
-            aleatoric = np.array(measures.get('Alea', np.zeros_like(y_test)))
+            epistemic = np.array(measures.get('Episteme', np.zeros(len(y_test))))
+            aleatoric = np.array(measures.get('Alea', np.zeros(len(y_test))))
             
         else: # Binary (Quality Classifier)
             if method == 'gpp':

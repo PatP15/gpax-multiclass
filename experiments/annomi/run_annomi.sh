@@ -10,9 +10,13 @@ PROJECT_ROOT=$(pwd)
 source /n/sw/Miniforge3-24.11.3-0/etc/profile.d/conda.sh
 conda activate gpax-multiclass
 
-# Install additional requirements if needed
-echo "Installing AnnoMI dependencies..."
-pip install -r experiments/annomi/requirements.txt
+# Install additional requirements only if missing (pip may be blocked/offline)
+if ! python -c "import datasets, transformers" 2>/dev/null; then
+  echo "Installing AnnoMI dependencies..."
+  pip install -r experiments/annomi/requirements.txt
+else
+  echo "AnnoMI dependencies present; skipping pip install."
+fi
 
 # Add project root to PYTHONPATH so we can import GPax
 export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
