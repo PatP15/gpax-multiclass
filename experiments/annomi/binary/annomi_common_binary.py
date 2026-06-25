@@ -216,6 +216,28 @@ def load_model(model_name=MODEL_NAME):
                     # model.to("cuda" if torch.cuda.is_available() else "cpu")
             return model, tokenizer
             
+        elif MODEL_TYPE in ("gemma4", "qwen36"):
+            # 2026 refresh: dense text LLMs (bf16). CausalLM with AutoModel fallback.
+            tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, trust_remote_code=True)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name, device_map="auto", torch_dtype=torch.bfloat16,
+                    output_hidden_states=True, token=hf_token,
+                    low_cpu_mem_usage=True, trust_remote_code=True,
+                )
+            except Exception as e:
+                print(f"AutoModelForCausalLM failed ({e}); falling back to AutoModel.")
+                from transformers import AutoModel
+                model = AutoModel.from_pretrained(
+                    model_name, device_map="auto", torch_dtype=torch.bfloat16,
+                    output_hidden_states=True, token=hf_token,
+                    low_cpu_mem_usage=True, trust_remote_code=True,
+                )
+            model.eval()
+            return model, tokenizer
+
         else: # Generic Fallback
             tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
             tokenizer.pad_token = tokenizer.eos_token
