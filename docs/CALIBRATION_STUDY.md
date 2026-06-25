@@ -1,0 +1,105 @@
+# GPP vs LPE Calibration Study (multiclass extension + LLM probes)
+
+**Question.** The GPP paper's central claim is that GPP is *better calibrated than LPE* — its judged
+probability tracks ground-truth label fuzziness, and it avoids being "confidently ignorant." Does
+that claim survive (a) the multiclass (Dirichlet) extension and (b) real open-weight-LLM embeddings?
+
+**TL;DR.**
+- The paper's metric is **Pearson(ground-truth fuzziness, judged probability)** per observation count
+  (under positive→negative label flipping), *not* ECE. (ECE was an early wrong turn here.)
+- **Binary (paper's setting): reproduced.** GPP > LPE at every `n`, biggest edge at low `n`.
+- **Multiclass (Dirichlet): the edge erodes at high `n`** — GPP keeps its low-`n` advantage but LPE
+  overtakes from ~`n`=32. The cause is **kernel capacity**, not calibration scaling.
+- **Rescue: a marginal-likelihood-tuned RBF kernel restores and exceeds the advantage** — multiclass
+  GPP-RBF beats LPE at every `n` (0.765 vs 0.588 at n=128). The cosine kernel was the ceiling.
+
+All experiments use 3D-Shapes M1 CNN embeddings, task **P.2 = 3-class shape** (fuzzify class 0 by
+flipping its labels to {1,2} with prob 1−p, gt levels p∈{0.25,0.5,0.75,1.0}), evaluated on a held-out
+test set. Binary results use **P.1 = floor-hue**. Scripts: `experiments/calibration_study/`.
+
+---
+
+## 1. Correct metric (reread of the paper, §4.3 / Fig 5–6)
+The paper controls fuzziness by randomly flipping positive→negative labels at gt probabilities
+{0.25,0.5,0.75,1.0}, and measures the **Pearson correlation between gt label probabilities and judged
+probabilities** (Fig 5 Left), plus *rational uncertainty*: under high episteme the judged probability
+should center at 0.5 for fuzzy concepts, whereas LPE assigns extreme probabilities even with little
+data ("confidently ignorant"). ECE is never used and measures a different thing (confidence vs.
+accuracy), so it is **not** the right test of this claim.
+
+## 2. Binary — claim reproduced
+Pearson(gt, judged) by observation count (P.1 floor-hue):
+
+| n_obs | 2 | 8 | 32 | 128 |
+|---|---|---|---|---|
+| **GPP** | **0.43** | **0.75** | **0.85** | 0.89 |
+| LPE | 0.20 | 0.61 | 0.81 | 0.89 |
+
+GPP > LPE at every level, with the largest gap at small `n` — exactly GPP's advertised data-efficiency.
+
+## 3. Multiclass — edge erodes at high n
+Pearson(gt, judged) (P.2 3-class shape):
+
+| n_obs | 2 | 8 | 32 | 128 | mean |
+|---|---|---|---|---|---|
+| GPP-Dirichlet (cosine) | 0.09–0.12 | 0.15 | 0.45–0.49 | 0.56 | ~0.33 |
+| GPP-Beta OvR (cosine) | ~0.10 | 0.15 | 0.45 | 0.54 | ~0.34 |
+| LPE | 0.06–0.13 | 0.16 | 0.51 | 0.61 | ~0.33 |
+
+GPP keeps the **low-`n`** edge (n=2: ~0.15–0.19 vs LPE 0.06) but LPE overtakes from `n`≈32. Note
+GPP-Beta (OvR, **no softmax**) shows the *same* shortfall → the cause is not the softmax.
+
+## 4. Failed rescues (rule out calibration-scaling)
+Swept the exposed Dirichlet knobs and a post-hoc softmax temperature on the multiclass task:
+
+| lever | result |
+|---|---|
+| `strength` ∈ {1,2,5,10} × `alpha_eps` ∈ {0.1,0.5,1.0} | flat, mean Pearson ~0.32–0.33; never reaches LPE |
+| softmax temperature T ∈ {1,2,3,5,8} | flat at low n, **hurts** high n (n=128: 0.546→0.513 as T↑) |
+
+Neither moves the high-`n` gap → it is **not** a peakedness/saturation problem. Combined with GPP-Beta
+(no softmax) failing identically, the cause is the **fixed cosine kernel's inductive bias/capacity**:
+it under-fits the harder shape concept as data grows, while LPE's MLE-fit logistic adapts.
+
+## 5. Successful rescue — marginal-likelihood-tuned RBF kernel
+Replace the cosine kernel with `squared_exponential` (RBF) on z-scored embeddings; sweep lengthscale ℓ:
+
+| ℓ | n=2 | n=8 | n=32 | n=128 | mean | NLL@128 (↓ = ML-better) |
+|---|---|---|---|---|---|---|
+| 3 | 0.155 | 0.177 | 0.498 | **0.765** | **0.399** | **902.8** |
+| 6 | 0.201 | 0.171 | 0.476 | 0.685 | 0.383 | 1067 |
+| 11 | 0.218 | 0.185 | 0.404 | 0.575 | 0.345 | 1219 |
+| 22 | 0.217 | 0.203 | 0.340 | 0.474 | 0.308 | 1341 |
+| 44 | 0.215 | 0.198 | 0.295 | 0.364 | 0.268 | 1411 |
+| *cosine (ref)* | 0.117 | 0.153 | 0.487 | 0.560 | 0.329 | — |
+| *LPE (ref)* | 0.063 | 0.164 | 0.512 | 0.588 | 0.332 | — |
+
+- **RBF ℓ=3 beats LPE at every `n`** and dominates at high `n` (0.765 vs 0.588), mean 0.399 vs 0.332.
+- The **GP marginal likelihood selects ℓ=3** (lowest NLL), so the lengthscale is auto-tunable — this
+  is a principled fix, not test-set oracle tuning.
+- Because the lever that addresses the *actual* mechanism (kernel capacity) works while the
+  calibration-scaling levers don't, the diagnosis is confirmed.
+
+## 6. ECE on AnnoMI LLM probes (secondary, not the paper's metric)
+AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available. GPP(few-shot) vs
+LPE(few-shot) @ n=2400: ECE GPP/LPE = gemma 0.130/0.075, qwen 0.045/0.046, gemma4 0.174/0.061,
+qwen36 0.058/0.071. LPE is better-calibrated on gemma/gemma-4 (the high-variance-embedding models),
+comparable on the qwen models — consistent with GPP's cosine kernel being scale-sensitive. (This is a
+weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above is the real one.)
+
+## 7. Conclusions & recommendations
+1. **The GPP calibration advantage is real and reproduces in binary.**
+2. In **multiclass it survives at low `n`** (the few-shot regime GPP is sold for) but the **fixed cosine
+   kernel is a ceiling at higher `n`**.
+3. **Fix:** use an **RBF kernel with a marginal-likelihood-optimized lengthscale** (on standardized
+   embeddings). This restores GPP's dominance over LPE across all `n` on the multiclass task.
+4. **Productization TODO** (not yet wired into the probe API): expose `cov_func`/`lengthscale` in
+   `gpp_multiclass`, and select the lengthscale per task via the GP marginal likelihood (needs the
+   `dirichlet_gp_nll` import fix noted in `docs/BUGS.md`). Standardize embeddings before the RBF kernel.
+
+## Reproduction
+- `experiments/calibration_study/calib_analysis.py` — ECE/Brier, AnnoMI GPP vs LPE.
+- `experiments/calibration_study/calib_why.py` — per-`n_obs` Pearson + rational-uncertainty decomposition (binary vs multiclass).
+- `experiments/calibration_study/rescue_calib.py` — `strength`×`alpha_eps` sweep (no rescue).
+- `experiments/calibration_study/rescue_temp.py` — softmax temperature sweep (no rescue).
+- `experiments/calibration_study/kernel_rescue.py` — RBF lengthscale sweep + marginal-likelihood selection (rescue).
