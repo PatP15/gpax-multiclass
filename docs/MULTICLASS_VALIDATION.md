@@ -50,7 +50,10 @@ AUROC(ID/OOD) over n_obs ∈ {8…128}, 5 seeds:
 
 `step4_kscaling.py`, on labels M1 actually encodes (K=2 floor, K=4 shape, K=8 shape×scale, K=16
 shape×scale×floor), GPP-cosine vs **GPP-rbf** (productized: standardize + ML lengthscale) vs the
-probing baselines LP / SVM / LPE, at n_obs=512, 5 seeds. Accuracy (higher better):
+probing baselines LP / SVM / LPE, at n_obs=512, 5 seeds. All standardized methods (GPP-rbf, LPE, LP,
+SVM) share one standardization reference — the observation stats — for an apples-to-apples comparison
+(GPP-cosine uses raw embeddings by design); cells are recorded only when every method succeeds.
+Accuracy (higher better):
 
 | K | GPP-cosine | **GPP-rbf** | SVM | LP | LPE | MI monotone (Spearman n_obs,MI) |
 |---|---|---|---|---|---|---|
