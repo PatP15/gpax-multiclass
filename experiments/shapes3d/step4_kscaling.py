@@ -76,19 +76,30 @@ for K in K_LIST:
             Xo, yo = Xtr_pool[io], ytr_pool[io]
             if len(np.unique(yo)) < 2:
                 continue
-            # GPP-Dirichlet
+            # GPP-cosine (paper default kernel)
             try:
                 g = ppm.gpp_multiclass(Xte_j, jnp.array(Xo), jax.nn.one_hot(yo, K), num_classes=K, n=NMC)
                 gp_p = np.array(g['categorical_mu'])
-                rows.append(dict(K=K, rep=rep, n_obs=n, method='GPP',
+                rows.append(dict(K=K, rep=rep, n_obs=n, method='GPP-cosine',
                                  acc=float((gp_p.argmax(1) == yte_s).mean()),
                                  brier=brier(gp_p, yte_s, K), ece=multiclass_ece(gp_p, yte_s),
                                  mi=float(np.mean(np.array(g['information_gain'])))))
             except Exception as e:
-                print('GPP fail', K, n, e)
+                print('GPP-cosine fail', K, n, e)
+            # GPP-rbf (productized: standardize + marginal-likelihood lengthscale)
+            try:
+                gr = ppm.gpp_multiclass_select(Xte_s, Xo, yo, num_classes=K, kernel='rbf',
+                                               lengthscale='auto', standardize=True, n=NMC)
+                gr_p = np.array(gr['categorical_mu'])
+                rows.append(dict(K=K, rep=rep, n_obs=n, method='GPP-rbf',
+                                 acc=float((gr_p.argmax(1) == yte_s).mean()),
+                                 brier=brier(gr_p, yte_s, K), ece=multiclass_ece(gr_p, yte_s),
+                                 mi=float(np.mean(np.array(gr['information_gain'])))))
+            except Exception as e:
+                print('GPP-rbf fail', K, n, e)
             # LPE
             try:
-                l = ppm.lpe_multiclass(Xte_z, jnp.array((Xo - mu_) / sd_), yo, num_classes=K, repeats=10)
+                l = ppm.lpe_multiclass(Xte_z, jnp.array((Xo - mu_) / sd_), yo, num_classes=K, repeats=50)
                 lp_p = np.array(l['categorical_mu'])
                 rows.append(dict(K=K, rep=rep, n_obs=n, method='LPE',
                                  acc=float((lp_p.argmax(1) == yte_s).mean()),
@@ -104,11 +115,11 @@ outdir = f'{REPO}/experiments/shapes3d/figures/kscaling'
 os.makedirs(outdir, exist_ok=True)
 df.to_csv(f'{outdir}/kscaling_raw.csv', index=False)
 
-# decomposition sanity: MI must decrease with n_obs at every K (GPP)
-print("\n===== Decomposition sanity: Spearman(n_obs, MI) per K (GPP, expect < 0) =====")
+# decomposition sanity: MI must decrease with n_obs at every K (GPP-cosine)
+print("\n===== Decomposition sanity: Spearman(n_obs, MI) per K (GPP-cosine, expect < 0) =====")
 mono = {}
 for K in K_LIST:
-    s = df[(df.K == K) & (df.method == 'GPP')]
+    s = df[(df.K == K) & (df.method == 'GPP-cosine')]
     rho, _ = spearmanr(s.n_obs, s.mi) if len(s) > 2 else (float('nan'), 0)
     mono[K] = float(rho); print(f"  K={K}: Spearman(n_obs, MI) = {rho:.3f}")
 
@@ -123,8 +134,9 @@ fig, ax = plt.subplots(1, 3, figsize=(16, 4.6))
 for j, (metric, lab, better) in enumerate([('acc', 'accuracy', 'higher'),
                                            ('brier', 'Brier score', 'lower'),
                                            ('ece', 'ECE', 'lower')]):
-    for meth, c in [('GPP', 'C0'), ('LPE', 'C1')]:
+    for meth, c in [('GPP-cosine', 'C0'), ('GPP-rbf', 'C2'), ('LPE', 'C1')]:
         s = big[big.method == meth]
+        if s.empty: continue
         g = s.groupby('K')[metric].agg(['mean', 'std'])
         ax[j].errorbar(g.index, g['mean'], yerr=g['std'], marker='o', capsize=3, label=meth, color=c)
     ax[j].set_xlabel('number of classes K'); ax[j].set_ylabel(f'{lab} ({better} better)')
