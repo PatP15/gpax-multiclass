@@ -1,170 +1,190 @@
-# GPax
+# GPax — Multiclass Gaussian Process Probes for LLM representations
 
-A codebase for Gaussian processes in Jax.
+A fork of Google's **GPax** that extends **Gaussian Process Probes (GPP)** — Wang et al.,
+*[Gaussian Process Probes (GPP) for Uncertainty-Aware Probing](https://arxiv.org/abs/2305.18213)* (NeurIPS 2023) —
+from **binary** to **multiclass** classification, and applies it to probe the frozen representations of
+open-weight LLMs with **calibrated, decomposable uncertainty** (aleatoric vs. epistemic).
 
-Disclaimer: This is not an officially supported Google product.
+> Disclaimer: builds on code that is not an officially supported Google product.
 
-## Gaussian Process Probes (GPP)
+**What's new in this fork**
+- `gpp_multiclass` — Dirichlet-GP multiclass probe (the binary Beta-GP is the K=2 special case).
+- Selectable kernels + **`gpp_multiclass_select`**: standardizes inputs and auto-tunes the kernel
+  lengthscale by GP marginal likelihood (label-free). This fixes a calibration ceiling of the default
+  cosine kernel — see [`docs/CALIBRATION_STUDY.md`](docs/CALIBRATION_STUDY.md).
+- A validation suite mirroring the paper's pillars for the multiclass setting
+  (see [`docs/MULTICLASS_VALIDATION.md`](docs/MULTICLASS_VALIDATION.md)).
+- Datasets for validating the **aleatoric/epistemic decomposition against human label disagreement**
+  (ChaosNLI, LeWiDi, GoEmotions) under `experiments/disagreement/`.
 
-GPP provides a method to measure uncertainty (aleatoric and epistemic) in linear probes trained on frozen embeddings. This library supports both binary and multiclass classification settings.
+---
 
-Please find algorithm descriptions in *[Gaussian Process Probes (GPP) for Uncertainty-Aware Probing](https://arxiv.org/abs/2305.18213)*.
+## 1. Installation
 
-### 1. Multiclass Classification (New)
+```bash
+# Recommended: conda/mamba env (JAX/Flax/Optax + scikit-learn + transformers + h5py)
+mamba env create -f environment.yaml
+mamba activate gpax-multiclass        # env name is gpax-multiclass
 
-For problems with more than two classes ($K > 2$), use the `gpp_multiclass` interface.
+# or editable pip install (Python >= 3.10)
+python3 -m venv env && source env/bin/activate && pip install -e .
+```
 
-#### Mathematical Explanation
+After a fresh `git clone`, also pull the LeWiDi data submodule (see §4):
+```bash
+git submodule update --init experiments/disagreement/lewidi
+```
 
-To extend GPP to multiclass classification, we model the probability vector $\mathbf{p}$ using a **Dirichlet distribution** instead of the Beta distribution used in the binary case.
+Optional extra (only to load the GoEmotions parquet): `pip install pyarrow`.
 
-1.  **Latent Function**: We model $K$ independent latent functions $f_1, \dots, f_K$ using Gaussian Processes.
-2.  **Dirichlet Approximation**: The Dirichlet distribution parameters $\boldsymbol{\alpha} = [\alpha_1, \dots, \alpha_K]$ are linked to the latent functions via a Log-Normal approximation. Specifically, we approximate the Dirichlet distribution by mapping the GP outputs to the concentration parameters:
-    $$ \ln \alpha_k \approx f_k $$
-    This allows us to perform standard GP inference for each class independently while preserving the properties of the Dirichlet prior.
-3.  **Likelihood**: The observed labels are treated as Categorical draws from the probability vector $\mathbf{p} \sim \text{Dir}(\boldsymbol{\alpha})$.
+---
 
-#### Usage
+## 2. The multiclass GPP API
 
 ```python
-from GPax.probing.probabilistic_probe_multiclass import gpp_multiclass
+from GPax.probing.probabilistic_probe_multiclass import gpp_multiclass, gpp_multiclass_select
 
-# x_train: (n_train, d) - Training embeddings
-# y_train: (n_train,) or (n_train, K) - Integer or One-hot labels
-# x_query: (n_query, d) - Test embeddings to probe
-
-measures = gpp_multiclass(
-    x_query=x_query,
-    x_observed=x_train,
-    y_observed=y_train,
-    num_classes=10,       # Optional if y_observed is one-hot
-    alpha_eps=0.1,        # Prior concentration (lower = sparser)
-    strength=5.0,         # Observation strength
-    n=10000,              # Monte Carlo samples
-    seed=42
-)
-
-print(measures['information_gain'])  # Epistemic uncertainty
-print(measures['expected_aleatory_entropy']) # Aleatoric uncertainty
+# x_observed: (n, d) frozen embeddings;  y_observed: (n,) int labels or (n, K) one-hot
+# x_query:    (n', d) embeddings to probe
+measures = gpp_multiclass(x_query, x_observed, y_observed, num_classes=K)
 ```
 
-### 2. Binary Classification (Original)
+**Output dict** (each is `(n', K)` or `(n', 1)`):
 
-For binary tasks, you can continue to use the standard `gpp` function which utilizes a Beta prior.
+| key | meaning |
+|---|---|
+| `categorical_mu` | judged class probabilities `E[softmax(f)]` (the Bayesian posterior predictive) |
+| `Alea` / `expected_aleatory_entropy` | **aleatoric** uncertainty `E[H(p)]` (concept fuzziness) |
+| `information_gain` | **epistemic** uncertainty = mutual information `H(E[p]) − E[H(p)]` |
+| `Episteme` | a *confidence* score (higher = more certain); negate to use as an uncertainty |
+| `latent_var` | per-class latent posterior variance (OOD proxy; `dirichlet_gp_ood_score`) |
 
-#### Mathematical Explanation
-
-In the binary case, we model the probability $p$ of the positive class using a **Beta distribution**.
-1.  **Latent Function**: A single latent function $f$ models the log-odds or similar transformation.
-2.  **Beta Approximation**: The Beta parameters $(\alpha, \beta)$ are approximated using a Log-Normal distribution to enable tractable GP inference.
-3.  **Likelihood**: Observed labels are Bernoulli distributed.
-
-#### Usage
-
-To use binary GPP, call [`gpp`](https://github.com/google-research/gpax/blob/main/GPax/probing/probabilistic_probe.py#L25):
+**Kernels & the calibration fix.** The default kernel is the paper's `cosine` (linear); it has no
+lengthscale and hits a capacity ceiling as classes/concepts get complex. Use a local kernel with an
+auto-selected lengthscale to restore calibration *and* accuracy:
 
 ```python
-from GPax.probing.probabilistic_probe import gpp
-
-# y_train must be 0 or 1
-measures = gpp(
-    x_query=x_query,
-    x_observed=x_train,
-    y_observed=y_train,
-    alpha_eps=0.1,
-    strength=5.0
-)
+# productized: standardize inputs + pick the lengthscale by marginal likelihood (no held-out set)
+m = gpp_multiclass_select(x_query, x_observed, y_observed, num_classes=K,
+                          kernel='laplace', lengthscale='auto')   # or kernel='rbf' / 'cosine' / 'rbf_sphere'
+# or pass an explicit kernel/lengthscale to the jitted core:
+m = gpp_multiclass(x_query, x_observed, y_observed, num_classes=K, kernel='rbf', lengthscale=3.0)
 ```
 
-### 3. Baselines
+**Hyperparameters:** `alpha_eps` (Dirichlet prior ε, default 0.1), `strength` (observation weight s,
+default 5.0), `n` (Monte-Carlo samples), `seed`. Do **not** pre-normalize embeddings for the cosine
+kernel (it augments + L2-normalizes internally); local kernels standardize inside `gpp_multiclass_select`.
 
-The library includes standard probabilistic probing baselines adapted for both binary and multiclass settings.
+**Binary (original):** `from GPax.probing.probabilistic_probe import gpp` — Beta-GP; `gpp_multiclass`
+reduces to it at K=2 (asserted in `tests/test_parity.py`).
 
-#### Linear Probe Ensemble (LPE)
--   **Math**: Uses bootstrap aggregation (bagging) of $M$ Logistic Regression models. Epistemic uncertainty is measured by the mutual information of the ensemble predictions:
-    $$ I(y; \theta | x) = H(\mathbb{E}[p(y|x, \theta)]) - \mathbb{E}[H(p(y|x, \theta))] $$
--   **Usage**: `lpe` (binary) or `lpe_multiclass` (multiclass).
+**Baselines** (binary / multiclass): `lpe`/`lpe_multiclass` (linear-probe ensemble),
+`lp_maxprob`/`lp_maxprob_multiclass` (max-softmax / MSP), `maha`/`maha_multiclass` (Mahalanobis).
 
-#### Maximum Probability (MaxProb)
--   **Math**: Uses a single deterministic Logistic Regression model. The proxy for epistemic uncertainty is the maximum predicted probability:
-    $$ \text{score} = \max_k p(y=k|x) $$
-    Lower MaxProb implies higher uncertainty (often used for OOD detection).
--   **Usage**: `lp_maxprob` (binary) or `lp_maxprob_multiclass` (multiclass).
+<details><summary><b>The math (Dirichlet GP, Milios et al. 2018)</b></summary>
 
-#### Mahalanobis Distance
--   **Math**: Models the features of each class $k$ as a Gaussian $\mathcal{N}(\boldsymbol{\mu}_k, \boldsymbol{\Sigma})$. The OOD score is the negative minimum Mahalanobis distance to any class centroid:
-    $$ \text{score} = -\min_k (x - \boldsymbol{\mu}_k)^T \boldsymbol{\Sigma}^{-1} (x - \boldsymbol{\mu}_k) $$
--   **Usage**: `maha` (binary) or `maha_multiclass` (multiclass).
+Per class `k`: one-hot label → concentration `α_k = ε + s·y_k`; log-normal moment-match gives a latent
+target `μ = log α_k − v/2` with heteroscedastic noise `v = log(1/α_k + 1)`. K independent latent GPs are
+fit on those targets (constant mean `log ε − v/2`, kernel scaled so `k(a,a)=v`). Class probabilities are
+`softmax` of latent samples (= a Dirichlet draw), so MC `E[softmax(f)]` is the posterior predictive, and
+the aleatoric/epistemic split is `E[H(p)]` / mutual information. K=2 recovers the binary Beta-GP `g=σ(fα−fβ)`.
+</details>
 
-## Pre-trained Gaussian processes
+---
 
-Please find algorithm descriptions in *[Pre-trained Gaussian processes for Bayesian optimization](https://arxiv.org/abs/2109.08215)*. An alternative implementation can be found at https://github.com/google-research/hyperbo.
-
-Implemented models include vanilla Gaussian processes ([`GaussianProcess`](https://github.com/google-research/gpax/blob/main/GPax/models/gp.py#L74)) as well as meta and multi-task Gaussian processes ([`MultiTaskGaussianProcess`](https://github.com/google-research/gpax/blob/main/GPax/models/gp.py#L279)).
-
-For pre-training the multi-task Gaussian process, you can call an optimizer (minimization) on the [empirical KL divergence (EKL) objective](https://github.com/google-research/gpax/blob/main/GPax/objectives/empirical_kl_divergence.py) or the [negative log likelihood (NLL) objective](https://github.com/google-research/gpax/blob/main/GPax/objectives/neg_log_likelihood.py). Examples of evaluating these objectives can be found in [the test for EKL](https://github.com/google-research/gpax/blob/main/GPax/objectives/empirical_kl_divergence_test.py) and [the test for NLL](https://github.com/google-research/gpax/blob/main/GPax/objectives/neg_log_likelihood_test.py).
-
-We also implemented [classic acquisition functions](https://github.com/google-research/gpax/blob/main/GPax/bayesopt/acquisitions.py) for Bayesian optimization. See [`GPax/bayesopt/acquisitions_test.py`](https://github.com/google-research/gpax/blob/main/GPax/bayesopt/acquisitions_test.py) for an example of how to evaluate these acquisition functions.
-
-### Citation
+## 3. Repository layout
 
 ```
+GPax/probing/        the method (JAX/Flax): gp.py (binary Beta-GP), gp_multiclass.py (Dirichlet GP),
+                     probabilistic_probe{,_multiclass}.py (public gpp / gpp_multiclass + baselines)
+GPtorch/             pure-PyTorch port of GPax/probing (parity-checked; experiments use the JAX version)
+experiments/
+  shapes3d/          3D-Shapes synthetic verification (CNN embeddings → GPP; reproduces paper Figs 4/5/6)
+                     + step4_{decomposition_validation,ood,kscaling}.py (multiclass validation)
+  annomi/            AnnoMI motivational-interviewing pipeline (LLM embeddings → GPP, K=3 talk type)
+  calibration_study/ GPP-vs-LPE calibration analysis + the kernel rescue (+ annomi_kernel_repeats.py)
+  disagreement/      aleatoric-vs-human-disagreement datasets + loaders (ChaosNLI / LeWiDi / GoEmotions)
+docs/                MULTICLASS_VALIDATION.md, CALIBRATION_STUDY.md, BUGS.md, PORTING_REPORT.md
+tests/               test_parity.py (binary≡multiclass at K=2)
+```
+
+Run scripts from the repo root, e.g. `python experiments/annomi/step2_exp2_context.py`.
+
+---
+
+## 4. Datasets & setup
+
+| dataset | task | where / how to get it |
+|---|---|---|
+| **3D-Shapes** | synthetic, controllable fuzziness (paper's substrate) | `python experiments/shapes3d/download_data.py` (≈480k imgs → repo root `3dshapes.h5`); CNN embedding runs on a GPU/cluster |
+| **AnnoMI** | LLM-embedding probe, K=3 client talk-type | committed under `experiments/annomi/data/<model>/*.npz` (no download needed for `step2_*`) |
+| **ChaosNLI** | NLI with 100 human annotations/example (human-disagreement ground truth) | **committed** under `experiments/disagreement/data/chaosNLI_v1.0/` (source: [easonnie/ChaosNLI](https://github.com/easonnie/ChaosNLI)) |
+| **GoEmotions** | 28-way Reddit emotions, per-rater labels | `python experiments/disagreement/download_data.py` (HF parquet); **`pip install pyarrow`** to load |
+| **LeWiDi** | 4 subjective text tasks w/ per-annotator soft labels (2021/2023/2025 editions) | **git submodule**: `git submodule update --init experiments/disagreement/lewidi` |
+
+**Disagreement loaders** (uniform `{text, soft_label, hard_label, n_annot, entropy}` records — the
+substrate for "does the probe recover the human label distribution?"):
+
+```bash
+python experiments/disagreement/download_data.py     # fetch GoEmotions + check ChaosNLI/LeWiDi
+python experiments/disagreement/data_loaders.py      # smoke-test: prints clearest vs most-ambiguous rows
+```
+```python
+from experiments.disagreement.data_loaders import load_chaosnli, load_lewidi, load_goemotions
+recs = load_chaosnli('snli')                 # 1,514 NLI items, soft_label over {entail,neutral,contradict}
+recs = load_lewidi('MD-Agreement', 'train')  # 6,592 tweets, binary soft_label from ≥5 annotators
+recs = load_goemotions(min_annot=3)          # per-comment emotion soft labels (needs pyarrow)
+```
+
+---
+
+## 5. Running the experiments
+
+```bash
+# 3D-Shapes verification (reproduces paper Figs 4/5/6)
+python experiments/shapes3d/gpp_extended_verification.py
+python tests/test_parity.py                                   # binary ≡ multiclass at K=2 (asserts)
+
+# multiclass validation suite (3D-Shapes M1 embeddings; see docs/MULTICLASS_VALIDATION.md)
+python experiments/shapes3d/step4_decomposition_validation.py # aleatoric/epistemic decomposition
+python experiments/shapes3d/step4_ood.py                      # multiclass OOD detection
+python experiments/shapes3d/step4_kscaling.py                 # K ∈ {2,4,8,16} scaling
+
+# AnnoMI (LLM probe) — pick a model via env var; step2 runs on committed .npz (no GPU)
+ANNOMI_MODEL_TYPE=gemma python experiments/annomi/step2_exp2_context.py
+
+# calibration study + productized-kernel re-validation on real LLM embeddings
+python experiments/calibration_study/kernel_compare.py
+python experiments/calibration_study/annomi_kernel_repeats.py
+```
+
+Cluster: SLURM batch scripts under `experiments/annomi/` request an A100 for embedding extraction
+(`step1`); the probing (`step2`) and the synthetic/calibration studies run on CPU.
+
+---
+
+## 6. Key results & docs
+
+- **[`docs/MULTICLASS_VALIDATION.md`](docs/MULTICLASS_VALIDATION.md)** — the multiclass extension validated
+  against the paper's three pillars (probing/data-efficiency, fuzziness + rational uncertainty, OOD),
+  plus K-scaling to K=16.
+- **[`docs/CALIBRATION_STUDY.md`](docs/CALIBRATION_STUDY.md)** — the cosine-kernel calibration ceiling and
+  the marginal-likelihood-tuned local-kernel fix (synthetic + real LLM embeddings).
+- **[`docs/BUGS.md`](docs/BUGS.md)** — audited issue list with fix status.
+- **[`CLAUDE.md`](CLAUDE.md)** — orientation for the codebase internals.
+
+---
+
+## 7. Citation
+
+```bibtex
 @article{wang2023gpp,
   title={{Gaussian Process Probes (GPP) for Uncertainty-Aware Probing}},
-  author={Zi Wang and
-          Alexander Ku and
-          Jason Baldridge and
-          Thomas L Griffiths and
-          Been Kim},
-  journal={arXiv preprint arXiv:2305.18213},
-  year={2023}
+  author={Zi Wang and Alexander Ku and Jason Baldridge and Thomas L Griffiths and Been Kim},
+  journal={arXiv preprint arXiv:2305.18213}, year={2023}
 }
 ```
 
-```
-@article{wang2023hyperbo,
-  title={{Pre-trained Gaussian processes for Bayesian optimization}},
-  author={Zi Wang and
-          George E. Dahl and
-          Kevin Swersky and
-          Chansoo Lee and
-          Zachary Nado and
-          Justin Gilmer and
-          Jasper Snoek and
-          Zoubin Ghahramani},
-  journal={arXiv preprint arXiv:2109.08215},
-  year={2023}
-}
-```
-
-## Installation
-
-### Conda / Mamba (Recommended)
-
-To set up the development environment using Conda or Mamba:
-
-```bash
-# Create the environment from the yaml file
-mamba env create -f environment.yaml
-
-# Activate the environment
-mamba activate gpax-multiclass
-```
-
-### Pip / Venv
-
-We recommend using Python 3.10 or higher.
-
-To install the latest development version inside a virtual environment, run
-```bash
-python3 -m venv env-pd
-source env-pd/bin/activate
-pip install --upgrade pip
-pip install -e .
-```
-
-### Legacy Install (Git)
-To install directly from git:
-```bash
-pip install "git+https://github.com/google-research/gpax.git#egg=gpax"
-```
+Datasets, if used: ChaosNLI (Nie et al., EMNLP 2020), LeWiDi (Leonardelli et al., SemEval-2023),
+GoEmotions (Demszky et al., ACL 2020), AnnoMI (Wu et al., 2023), 3D-Shapes (Burgess & Kim, 2018).
+The Dirichlet-GP construction follows Milios et al. (NeurIPS 2018).

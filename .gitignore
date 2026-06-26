@@ -60,3 +60,6 @@ terminals/
 
 huggingfacetoken.txt
 *.npy
+
+# GoEmotions raw parquet (24MB; fetch via experiments/disagreement/download_data.py, needs pyarrow)
+experiments/disagreement/data/goemotions/

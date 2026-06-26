@@ -1,0 +1,3 @@
+[submodule "experiments/disagreement/lewidi"]
+	path = experiments/disagreement/lewidi
+	url = https://github.com/Le-Wi-Di/le-wi-di.github.io.git
