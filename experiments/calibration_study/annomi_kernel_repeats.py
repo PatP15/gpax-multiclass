@@ -61,31 +61,36 @@ def predict(method, Xtr, ytr, Xte):
                                num_classes=K, repeats=50)
         return np.array(m['categorical_mu'])
     if method == 'LP-temp':
-        # Temperature-scaled logistic probe: standard "easy calibration fix" baseline.
-        # Fit LP on a sub-split, fit scalar T on a held-out split (NO test leakage), apply to test.
-        mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
-        Xtr_z, Xte_z = (Xtr - mu) / sd, (Xte - mu) / sd
-        try:
-            Xf, Xv, yf, yv = train_test_split(Xtr_z, ytr, test_size=0.25, random_state=0, stratify=ytr)
-        except ValueError:
-            Xf, Xv, yf, yv = Xtr_z, Xtr_z, ytr, ytr      # too few per class to split
-        clf = sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000).fit(Xf, yf)
-
-        def logits(X):
-            dec = clf.decision_function(X)
-            if dec.ndim == 1:                            # K==2 edge case
-                dec = np.vstack([-dec, dec]).T
-            full = np.full((len(X), K), -1e9); full[:, clf.classes_.astype(int)] = dec
-            return full
+        # Temperature-scaled logistic probe: the standard "easy calibration fix".
+        # Best-practice recipe: fit the scalar T on cross-validated out-of-fold
+        # logits over ALL observations (no test leakage), then refit LP on all
+        # observations and apply T to the test logits.
+        from sklearn.model_selection import cross_val_predict
 
         def softmax_T(L, T):
             z = L / T; z = z - z.max(1, keepdims=True); e = np.exp(z); return e / e.sum(1, keepdims=True)
 
-        Lv, Lte = logits(Xv), logits(Xte)
-        def val_nll(T):
-            p = softmax_T(Lv, T); return -np.mean(np.log(p[np.arange(len(yv)), yv] + 1e-12))
-        T = float(minimize_scalar(val_nll, bounds=(0.05, 100.0), method='bounded').x)
-        return softmax_T(Lte, T)
+        def pad(dec, classes):
+            if dec.ndim == 1:                              # K==2 edge case
+                dec = np.vstack([-dec, dec]).T
+            full = np.full((len(dec), K), -1e9); full[:, classes.astype(int)] = dec
+            return full
+
+        mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
+        Xtr_z, Xte_z = (Xtr - mu) / sd, (Xte - mu) / sd
+        mk = lambda: sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+        cv = int(min(5, np.min(np.bincount(ytr))))
+        try:
+            oof = cross_val_predict(mk(), Xtr_z, ytr, cv=cv, method='decision_function')
+            classes = np.unique(ytr)
+        except Exception:
+            c = mk().fit(Xtr_z, ytr); oof = c.decision_function(Xtr_z); classes = c.classes_
+        Loof = pad(np.asarray(oof), classes)
+        T = float(minimize_scalar(
+            lambda T: -np.mean(np.log(softmax_T(Loof, T)[np.arange(len(ytr)), ytr] + 1e-12)),
+            bounds=(0.05, 100.0), method='bounded').x)
+        clf = mk().fit(Xtr_z, ytr)
+        return softmax_T(pad(clf.decision_function(Xte_z), clf.classes_), T)
 
 
 rows = []
