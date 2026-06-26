@@ -21,6 +21,8 @@ import numpy as np, jax, jax.numpy as jnp
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+import sklearn.linear_model as sklm
+from scipy.optimize import minimize_scalar
 from GPax.probing import probabilistic_probe_multiclass as ppm
 # Canonical calibration metrics (15-bin ECE, multiclass Brier) — shared with calib_analysis.py
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +31,7 @@ from calib_analysis import ece, brier
 MODELS = [m for m in ['gemma', 'qwen', 'gemma4', 'qwen36']
           if os.path.exists(f'{REPO}/experiments/annomi/data/{m}/embeddings.npz')]
 NOBS = [100, 500, 1500, 2400]; SEEDS = list(range(5)); K = 3; NMC = 1500
-METHODS = ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE']
+METHODS = ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE', 'LP-temp']
 
 
 def balance(X, y, seed):
@@ -58,6 +60,32 @@ def predict(method, Xtr, ytr, Xte):
         m = ppm.lpe_multiclass(jnp.array((Xte - mu) / sd), jnp.array((Xtr - mu) / sd), ytr,
                                num_classes=K, repeats=50)
         return np.array(m['categorical_mu'])
+    if method == 'LP-temp':
+        # Temperature-scaled logistic probe: standard "easy calibration fix" baseline.
+        # Fit LP on a sub-split, fit scalar T on a held-out split (NO test leakage), apply to test.
+        mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
+        Xtr_z, Xte_z = (Xtr - mu) / sd, (Xte - mu) / sd
+        try:
+            Xf, Xv, yf, yv = train_test_split(Xtr_z, ytr, test_size=0.25, random_state=0, stratify=ytr)
+        except ValueError:
+            Xf, Xv, yf, yv = Xtr_z, Xtr_z, ytr, ytr      # too few per class to split
+        clf = sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000).fit(Xf, yf)
+
+        def logits(X):
+            dec = clf.decision_function(X)
+            if dec.ndim == 1:                            # K==2 edge case
+                dec = np.vstack([-dec, dec]).T
+            full = np.full((len(X), K), -1e9); full[:, clf.classes_.astype(int)] = dec
+            return full
+
+        def softmax_T(L, T):
+            z = L / T; z = z - z.max(1, keepdims=True); e = np.exp(z); return e / e.sum(1, keepdims=True)
+
+        Lv, Lte = logits(Xv), logits(Xte)
+        def val_nll(T):
+            p = softmax_T(Lv, T); return -np.mean(np.log(p[np.arange(len(yv)), yv] + 1e-12))
+        T = float(minimize_scalar(val_nll, bounds=(0.05, 100.0), method='bounded').x)
+        return softmax_T(Lte, T)
 
 
 rows = []
@@ -117,7 +145,7 @@ for model in MODELS:
 # figure: accuracy + ECE vs n, per model, methods overlaid with CI bands
 nM = len(MODELS)
 fig, axes = plt.subplots(2, nM, figsize=(5 * nM, 9), squeeze=False)
-colors = {'GPP-cosine': 'C0', 'GPP-rbf': 'C2', 'GPP-laplace': 'C3', 'LPE': 'C1'}
+colors = {'GPP-cosine': 'C0', 'GPP-rbf': 'C2', 'GPP-laplace': 'C3', 'LPE': 'C1', 'LP-temp': 'C5'}
 for j, model in enumerate(MODELS):
     for mi, metric in enumerate(['acc', 'ece']):
         ax = axes[mi][j]

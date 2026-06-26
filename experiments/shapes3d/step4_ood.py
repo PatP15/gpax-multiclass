@@ -93,6 +93,16 @@ def baseline_scores(Xq, Xo, yo):
         out['LPE'] = -np.sum(np.array(l['epistemic_var']), axis=1)
     except Exception as e:
         out['LPE'] = np.full(len(Xq), np.nan); print('lpe fail', e)
+    try:
+        # Deep-kNN OOD (Sun et al. 2022): score = -mean distance to the k nearest
+        # observations in feature space (higher = closer = ID). k matched to obs count.
+        from sklearn.neighbors import NearestNeighbors
+        k = min(5, len(Xo))
+        nn = NearestNeighbors(n_neighbors=k).fit(np.asarray(Xo_z))
+        dist, _ = nn.kneighbors(np.asarray(Xq_z))
+        out['kNN'] = -dist.mean(1)
+    except Exception as e:
+        out['kNN'] = np.full(len(Xq), np.nan); print('knn fail', e)
     return out
 
 
@@ -143,7 +153,7 @@ df.to_csv(f'{outdir}/ood_raw.csv', index=False)
 
 # summary table (mean AUROC over reps, at each n_obs)
 print("\n===== AUROC(ID/OOD) mean over reps =====")
-methods = ['GPP (neg latent var)', 'GPP (Episteme)', 'Maha', 'MSP', 'LPE']
+methods = ['GPP (neg latent var)', 'GPP (Episteme)', 'Maha', 'MSP', 'LPE', 'kNN']
 regimes = df.regime.unique()
 summary = {}
 for reg in regimes:

@@ -22,7 +22,19 @@ import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 from sklearn.model_selection import train_test_split
+import sklearn.linear_model as sklm, sklearn.svm as sksvm
 from GPax.probing import probabilistic_probe_multiclass as ppm
+
+
+def _proba_padded(clf, Xtr_z, ytr, Xte_z, K):
+    """Fit a sklearn classifier and return (n, K) probabilities, padding any class
+    absent from the observed sample with zero-probability columns."""
+    clf.fit(Xtr_z, ytr)
+    p = clf.predict_proba(Xte_z)
+    if p.shape[1] == K:
+        return p
+    full = np.zeros((len(Xte_z), K)); full[:, clf.classes_.astype(int)] = p
+    return full
 
 K_LIST = [2, 4, 8, 16]; NOBS = [32, 128, 512]; REPEATS = 5; NMC = 2000; N_TEST = 2000
 
@@ -66,8 +78,8 @@ for K in K_LIST:
     Xtr_pool, Xte, ytr_pool, yte = train_test_split(emb, y, test_size=0.3, random_state=42, stratify=y)
     ridx = np.random.RandomState(0).choice(len(Xte), N_TEST, replace=False)
     Xte_s, yte_s = Xte[ridx], yte[ridx]; Xte_j = jnp.array(Xte_s)
-    mu_, sd_ = Xtr_pool.mean(0), Xtr_pool.std(0) + 1e-8   # standardize LPE inputs (GPP stays raw)
-    Xte_z = jnp.array((Xte_s - mu_) / sd_)
+    mu_, sd_ = Xtr_pool.mean(0), Xtr_pool.std(0) + 1e-8   # standardize LPE/LP/SVM inputs (GPP stays raw)
+    Xte_zn = (Xte_s - mu_) / sd_; Xte_z = jnp.array(Xte_zn)
     print(f"\n===== K={K}  (class counts: {np.bincount(ytr_pool)}) =====", flush=True)
     for rep in range(REPEATS):
         rng = np.random.RandomState(200 + rep)
@@ -107,6 +119,19 @@ for K in K_LIST:
                                  mi=float(np.mean(np.array(l['information_gain'])))))
             except Exception as e:
                 pass
+            # LP (single multinomial logistic) and SVM (linear) -- paper Fig-4 probing baselines.
+            # Point classifiers: accuracy/Brier/ECE only (no uncertainty decomposition -> mi=nan).
+            Xo_z = (Xo - mu_) / sd_
+            for mname, clf in [('LP', sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)),
+                               ('SVM', sksvm.SVC(kernel='linear', probability=True))]:
+                try:
+                    pp_ = _proba_padded(clf, Xo_z, yo, Xte_zn, K)
+                    rows.append(dict(K=K, rep=rep, n_obs=n, method=mname,
+                                     acc=float((pp_.argmax(1) == yte_s).mean()),
+                                     brier=brier(pp_, yte_s, K), ece=multiclass_ece(pp_, yte_s),
+                                     mi=float('nan')))
+                except Exception as e:
+                    print(f'{mname} fail', K, n, e)
         print(f"  rep{rep} done", flush=True)
 
 import pandas as pd
@@ -134,7 +159,7 @@ fig, ax = plt.subplots(1, 3, figsize=(16, 4.6))
 for j, (metric, lab, better) in enumerate([('acc', 'accuracy', 'higher'),
                                            ('brier', 'Brier score', 'lower'),
                                            ('ece', 'ECE', 'lower')]):
-    for meth, c in [('GPP-cosine', 'C0'), ('GPP-rbf', 'C2'), ('LPE', 'C1')]:
+    for meth, c in [('GPP-cosine', 'C0'), ('GPP-rbf', 'C2'), ('LPE', 'C1'), ('LP', 'C4'), ('SVM', 'C5')]:
         s = big[big.method == meth]
         if s.empty: continue
         g = s.groupby('K')[metric].agg(['mean', 'std'])
