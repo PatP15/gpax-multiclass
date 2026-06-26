@@ -1,0 +1,16 @@
+{
+  "near-OOD (held-out shape 3)": {
+    "GPP (neg latent var)": 0.82981296875,
+    "GPP (Episteme)": 0.5477363749999999,
+    "Maha": 0.7757752500000001,
+    "MSP": 0.35716934375000003,
+    "LPE": 0.536117625
+  },
+  "far-OOD (uniform noise)": {
+    "GPP (neg latent var)": 0.44174221875,
+    "GPP (Episteme)": 0.5390098125,
+    "Maha": 0.2644066875,
+    "MSP": 0.63975884375,
+    "LPE": 0.50198778125
+  }
+}
