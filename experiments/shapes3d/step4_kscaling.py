@@ -33,7 +33,11 @@ def _proba_padded(clf, Xtr_z, ytr, Xte_z, K):
     p = clf.predict_proba(Xte_z)
     if p.shape[1] == K:
         return p
-    full = np.zeros((len(Xte_z), K)); full[:, clf.classes_.astype(int)] = p
+    # Scatter present-class columns to absolute indices; valid because k_labels are
+    # contiguous 0..K-1 (guard so a future non-contiguous mapping fails loudly).
+    cls = clf.classes_.astype(int)
+    assert cls.min() >= 0 and cls.max() < K, f"non-contiguous class labels {cls} for K={K}"
+    full = np.zeros((len(Xte_z), K)); full[:, cls] = p
     return full
 
 K_LIST = [2, 4, 8, 16]; NOBS = [32, 128, 512]; REPEATS = 5; NMC = 2000; N_TEST = 2000
@@ -78,8 +82,6 @@ for K in K_LIST:
     Xtr_pool, Xte, ytr_pool, yte = train_test_split(emb, y, test_size=0.3, random_state=42, stratify=y)
     ridx = np.random.RandomState(0).choice(len(Xte), N_TEST, replace=False)
     Xte_s, yte_s = Xte[ridx], yte[ridx]; Xte_j = jnp.array(Xte_s)
-    mu_, sd_ = Xtr_pool.mean(0), Xtr_pool.std(0) + 1e-8   # standardize LPE/LP/SVM inputs (GPP stays raw)
-    Xte_zn = (Xte_s - mu_) / sd_; Xte_z = jnp.array(Xte_zn)
     print(f"\n===== K={K}  (class counts: {np.bincount(ytr_pool)}) =====", flush=True)
     for rep in range(REPEATS):
         rng = np.random.RandomState(200 + rep)
@@ -88,50 +90,35 @@ for K in K_LIST:
             Xo, yo = Xtr_pool[io], ytr_pool[io]
             if len(np.unique(yo)) < 2:
                 continue
-            # GPP-cosine (paper default kernel)
+            # Single standardization reference for ALL standardized methods: the
+            # observations themselves (the realistic few-shot reference, identical
+            # across GPP-rbf/LPE/LP/SVM). GPP-cosine uses raw embeddings by design.
+            mu_o, sd_o = Xo.mean(0), Xo.std(0) + 1e-8
+            Xo_z = (Xo - mu_o) / sd_o; Xte_zo = (Xte_s - mu_o) / sd_o
+            yoh = jax.nn.one_hot(yo, K)
+            # Compute every method first; record the (K,rep,n) cell only if ALL
+            # succeed, so method averages are never over mismatched cell counts.
+            cell = {}
             try:
-                g = ppm.gpp_multiclass(Xte_j, jnp.array(Xo), jax.nn.one_hot(yo, K), num_classes=K, n=NMC)
-                gp_p = np.array(g['categorical_mu'])
-                rows.append(dict(K=K, rep=rep, n_obs=n, method='GPP-cosine',
-                                 acc=float((gp_p.argmax(1) == yte_s).mean()),
-                                 brier=brier(gp_p, yte_s, K), ece=multiclass_ece(gp_p, yte_s),
-                                 mi=float(np.mean(np.array(g['information_gain'])))))
+                g = ppm.gpp_multiclass(Xte_j, jnp.array(Xo), yoh, num_classes=K, n=NMC)
+                cell['GPP-cosine'] = (np.array(g['categorical_mu']),
+                                      float(np.mean(np.array(g['information_gain']))))
+                gr = ppm.gpp_multiclass_select(Xte_zo, Xo_z, yo, num_classes=K, kernel='rbf',
+                                               lengthscale='auto', standardize=False, n=NMC)
+                cell['GPP-rbf'] = (np.array(gr['categorical_mu']),
+                                   float(np.mean(np.array(gr['information_gain']))))
+                l = ppm.lpe_multiclass(jnp.array(Xte_zo), jnp.array(Xo_z), yo, num_classes=K, repeats=50)
+                cell['LPE'] = (np.array(l['categorical_mu']),
+                               float(np.mean(np.array(l['information_gain']))))
+                for mname, clf in [('LP', sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)),
+                                   ('SVM', sksvm.SVC(kernel='linear', probability=True))]:
+                    cell[mname] = (_proba_padded(clf, Xo_z, yo, Xte_zo, K), float('nan'))
             except Exception as e:
-                print('GPP-cosine fail', K, n, e)
-            # GPP-rbf (productized: standardize + marginal-likelihood lengthscale)
-            try:
-                gr = ppm.gpp_multiclass_select(Xte_s, Xo, yo, num_classes=K, kernel='rbf',
-                                               lengthscale='auto', standardize=True, n=NMC)
-                gr_p = np.array(gr['categorical_mu'])
-                rows.append(dict(K=K, rep=rep, n_obs=n, method='GPP-rbf',
-                                 acc=float((gr_p.argmax(1) == yte_s).mean()),
-                                 brier=brier(gr_p, yte_s, K), ece=multiclass_ece(gr_p, yte_s),
-                                 mi=float(np.mean(np.array(gr['information_gain'])))))
-            except Exception as e:
-                print('GPP-rbf fail', K, n, e)
-            # LPE
-            try:
-                l = ppm.lpe_multiclass(Xte_z, jnp.array((Xo - mu_) / sd_), yo, num_classes=K, repeats=50)
-                lp_p = np.array(l['categorical_mu'])
-                rows.append(dict(K=K, rep=rep, n_obs=n, method='LPE',
-                                 acc=float((lp_p.argmax(1) == yte_s).mean()),
-                                 brier=brier(lp_p, yte_s, K), ece=multiclass_ece(lp_p, yte_s),
-                                 mi=float(np.mean(np.array(l['information_gain'])))))
-            except Exception as e:
-                pass
-            # LP (single multinomial logistic) and SVM (linear) -- paper Fig-4 probing baselines.
-            # Point classifiers: accuracy/Brier/ECE only (no uncertainty decomposition -> mi=nan).
-            Xo_z = (Xo - mu_) / sd_
-            for mname, clf in [('LP', sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)),
-                               ('SVM', sksvm.SVC(kernel='linear', probability=True))]:
-                try:
-                    pp_ = _proba_padded(clf, Xo_z, yo, Xte_zn, K)
-                    rows.append(dict(K=K, rep=rep, n_obs=n, method=mname,
-                                     acc=float((pp_.argmax(1) == yte_s).mean()),
-                                     brier=brier(pp_, yte_s, K), ece=multiclass_ece(pp_, yte_s),
-                                     mi=float('nan')))
-                except Exception as e:
-                    print(f'{mname} fail', K, n, e)
+                print('kscaling cell dropped (matched conditions)', K, rep, n, repr(e)); continue
+            for mname, (p, mi) in cell.items():
+                rows.append(dict(K=K, rep=rep, n_obs=n, method=mname,
+                                 acc=float((p.argmax(1) == yte_s).mean()),
+                                 brier=brier(p, yte_s, K), ece=multiclass_ece(p, yte_s), mi=mi))
         print(f"  rep{rep} done", flush=True)
 
 import pandas as pd

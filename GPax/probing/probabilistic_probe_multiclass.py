@@ -142,6 +142,8 @@ def gpp_multiclass_select(
           # ~ typical pairwise scale; sqrt(D) in standardized space, scaled by the
           # mean per-dim std so the grid is sane even when standardize=False.
           base = float(np.sqrt(xo.shape[1]) * np.mean(xo.std(0)))
+          if not np.isfinite(base) or base <= 0:   # degenerate (constant) observations
+              base = float(np.sqrt(xo.shape[1]))    # fall back to the standardized-space scale
           ls_grid = [base * f for f in (0.25, 0.5, 1.0, 2.0, 4.0)]
       best_ls, best_nll = None, np.inf
       for ls in ls_grid:

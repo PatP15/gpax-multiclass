@@ -80,12 +80,12 @@ def predict(method, Xtr, ytr, Xte):
         Xtr_z, Xte_z = (Xtr - mu) / sd, (Xte - mu) / sd
         mk = lambda: sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
         cv = int(min(5, np.min(np.bincount(ytr))))
-        try:
-            oof = cross_val_predict(mk(), Xtr_z, ytr, cv=cv, method='decision_function')
-            classes = np.unique(ytr)
-        except Exception:
-            c = mk().fit(Xtr_z, ytr); oof = c.decision_function(Xtr_z); classes = c.classes_
-        Loof = pad(np.asarray(oof), classes)
+        if cv < 2:
+            # No honest out-of-fold split possible; drop this cell rather than fit T
+            # on in-sample logits (which would leak and understate ECE).
+            raise ValueError(f"LP-temp: cv={cv} < 2, cannot fit temperature out-of-fold")
+        oof = cross_val_predict(mk(), Xtr_z, ytr, cv=cv, method='decision_function')
+        Loof = pad(np.asarray(oof), np.unique(ytr))
         T = float(minimize_scalar(
             lambda T: -np.mean(np.log(softmax_T(Loof, T)[np.arange(len(ytr)), ytr] + 1e-12)),
             bounds=(0.05, 100.0), method='bounded').x)
