@@ -23,7 +23,18 @@ import numpy as np
 import sklearn.linear_model as sklm
 
 
-@partial(jax.jit, static_argnames=['num_classes', 'n'])
+# Kernel name -> the cov function in gp_multiclass. All of these satisfy the
+# Beta-GP prior constraint k(a,a)=v (signal_variance is set to v by
+# set_default_params_dirichlet), so they are drop-in calibrated GPP kernels.
+_KERNELS = {
+    'cosine': 'cosine_kernel',                       # linear / angular (paper default, no lengthscale)
+    'rbf': 'squared_exponential_kernel',             # local, Euclidean, lengthscale
+    'laplace': 'laplace_kernel',                     # local, L1, lengthscale
+    'rbf_sphere': 'squared_exponential_sphere_kernel',  # local, angular, lengthscale
+}
+
+
+@partial(jax.jit, static_argnames=['num_classes', 'n', 'kernel'])
 def gpp_multiclass(
     x_query,
     x_observed=None,
@@ -33,6 +44,8 @@ def gpp_multiclass(
     strength=5.0,
     n=int(1e5),
     seed=0,
+    kernel='cosine',
+    lengthscale=None,
 ):
   """Probing model representations with GPP for multiclass classification.
 
@@ -47,36 +60,107 @@ def gpp_multiclass(
     strength: the s parameter in posterior inference.
     n: number of samples for Monte Carlo estimation.
     seed: int random seed for Monte Carlo estimation.
+    kernel: one of 'cosine' (default, paper), 'rbf', 'laplace', 'rbf_sphere'.
+    lengthscale: kernel lengthscale for the local kernels (ignored by 'cosine').
+      For automatic marginal-likelihood selection use `gpp_multiclass_select`.
 
   Returns:
     Dictionary mapping from name to measures of uncertainty.
   """
-  # (debug prints removed)
-    
   mean_func = gp.constant_mean
-  cov_func = gp.cosine_kernel
+  cov_func = getattr(gp, _KERNELS[kernel])
   params = {
       'alpha_eps': alpha_eps,
       'strength': strength,
   }
   if num_classes is not None:
       params['num_classes'] = num_classes
-      
+  if lengthscale is not None:
+      params['lengthscale'] = lengthscale
+
   predictions = gp.dirichlet_gp_predict(
       mean_func=mean_func,
       cov_func=cov_func,
       x_query=x_query,
       x_observed=x_observed,
-      # Ensure y_observed is passed correctly. 
-      # If it is indices (n,), expand to (n, 1) for consistency with internal checks if needed,
-      # though gp_multiclass handles both.
+      # If y is indices (n,), expand to (n, 1); gp_multiclass handles both.
       y_observed=y_observed[:, None] if (y_observed is not None and y_observed.ndim == 1) else y_observed,
       params=params,
   )
-  
+
   measures = gp.dirichlet_gp_uncertainty(predictions, seed=seed, n=n)
-  
-  # Return full measures (n' x K or n' x 1)
+  return measures
+
+
+def gpp_multiclass_select(
+    x_query,
+    x_observed,
+    y_observed,
+    num_classes,
+    kernel='rbf',
+    lengthscale='auto',
+    standardize=True,
+    ls_grid=None,
+    alpha_eps=0.1,
+    strength=5.0,
+    n=int(1e5),
+    seed=0,
+):
+  """GPP-multiclass with a productized local kernel + auto-tuned lengthscale.
+
+  Wraps `gpp_multiclass` with (1) optional input standardization (fit on the
+  observations) so the lengthscale is on a sane scale, and (2) automatic
+  lengthscale selection by minimizing the GP negative log marginal likelihood
+  (`gp.dirichlet_gp_nll`) over `ls_grid` — a label-free, test-set-free model
+  selection score. The calibration study (docs/CALIBRATION_STUDY.md) shows this
+  restores and exceeds GPP's calibration advantage over LPE on multiclass tasks,
+  where the fixed cosine kernel hits a capacity ceiling.
+
+  Non-jitted (the selection loop is Python); the inner prediction is jitted.
+  Returns the usual measures dict plus 'selected_lengthscale' and 'selected_nll'.
+  """
+  if kernel == 'cosine':
+      # The cosine kernel self-normalizes and has no lengthscale.
+      measures = dict(gpp_multiclass(
+          x_query, x_observed, y_observed, num_classes=num_classes,
+          alpha_eps=alpha_eps, strength=strength, n=n, seed=seed, kernel='cosine'))
+      measures['selected_lengthscale'] = None
+      measures['selected_nll'] = None
+      return measures
+
+  xo = np.asarray(x_observed); xq = np.asarray(x_query)
+  if standardize:
+      mu = xo.mean(0); sd = xo.std(0) + 1e-8
+      xo = (xo - mu) / sd; xq = (xq - mu) / sd
+  xo_j, xq_j = jnp.asarray(xo), jnp.asarray(xq)
+
+  mean_func = gp.constant_mean
+  cov_func = getattr(gp, _KERNELS[kernel])
+
+  if lengthscale == 'auto':
+      if ls_grid is None:
+          base = float(np.sqrt(xo.shape[1]))   # ~ typical pairwise scale in standardized space
+          ls_grid = [base * f for f in (0.25, 0.5, 1.0, 2.0, 4.0)]
+      best_ls, best_nll = None, np.inf
+      for ls in ls_grid:
+          params = {'alpha_eps': alpha_eps, 'strength': strength,
+                    'num_classes': num_classes, 'lengthscale': float(ls)}
+          try:
+              nll = float(gp.dirichlet_gp_nll(mean_func, cov_func, params, xo_j, y_observed))
+          except Exception:
+              nll = np.inf
+          if nll < best_nll:
+              best_nll, best_ls = nll, float(ls)
+      chosen, chosen_nll = best_ls, (None if best_nll == np.inf else best_nll)
+  else:
+      chosen, chosen_nll = float(lengthscale), None
+
+  measures = dict(gpp_multiclass(
+      xq_j, xo_j, y_observed, num_classes=num_classes,
+      alpha_eps=alpha_eps, strength=strength, n=n, seed=seed,
+      kernel=kernel, lengthscale=chosen))
+  measures['selected_lengthscale'] = chosen
+  measures['selected_nll'] = chosen_nll
   return measures
 
 
