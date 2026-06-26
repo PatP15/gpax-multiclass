@@ -488,6 +488,32 @@ def classifier_samples_uncertainty_multiclass(p_samples):
   }
 
 
+def dirichlet_gp_ood_score(predictions):
+  """OOD score for a Dirichlet GP = negative summed latent posterior variance.
+
+  Following the paper (§4.4), GPP uses the negative latent variance of the
+  posterior latent function as a proxy for episteme for OOD detection: a high
+  score (low posterior variance) means in-distribution, a low score means OOD.
+  Here we sum the posterior variances of the K independent latent GPs.
+
+  Args:
+    predictions: list of (mu, var) tuples from `dirichlet_gp_predict`
+      (typically called with var_only=True).
+
+  Returns:
+    score: (n',) array; higher = more in-distribution.
+  """
+  _, variances = get_latent_gp_dirichlet(predictions)
+  latent_vars = []
+  for v in variances:
+    if v.ndim > 1 and v.shape[0] == v.shape[1]:
+      latent_vars.append(jnp.diag(v)[:, None])  # full cov -> diagonal
+    else:
+      latent_vars.append(v)
+  total_var = jnp.sum(jnp.hstack(latent_vars), axis=1)  # (n',)
+  return -total_var
+
+
 def dirichlet_mnll(
     mean_func,
     cov_func,
@@ -497,23 +523,29 @@ def dirichlet_mnll(
     x_train,  # n x d
     y_train,  # n x K
     warp_func=None,
+    seed=0,
+    n_mc=int(1e4),
 ):
-  """Mean negative log likelihood for Dirichlet GP."""
-  # Handle input shapes
+  """Mean negative log predictive likelihood of held-out queries.
+
+  Uses the same Monte-Carlo softmax posterior predictive (E[softmax(f)]) as the
+  rest of the module, so it is consistent with `categorical_mu`. This replaces
+  an earlier version that reconstructed alpha from the posterior variance, which
+  was inconsistent with the predictive used everywhere else.
+  """
   if len(y_train.shape) == 1 or y_train.shape[1] == 1:
     y_train_flat = y_train.flatten().astype(int)
     if 'num_classes' in params:
-        num_classes = params['num_classes']
+      num_classes = params['num_classes']
     else:
-        num_classes = int(jnp.max(y_train_flat) + 1)
+      num_classes = int(jnp.max(y_train_flat) + 1)
     y_train = jax.nn.one_hot(y_train_flat, num_classes)
   else:
     num_classes = y_train.shape[1]
-  
+
   if len(y_query.shape) == 1 or y_query.shape[1] == 1:
-    y_query_flat = y_query.flatten().astype(int)
-    y_query = jax.nn.one_hot(y_query_flat, num_classes)
-  
+    y_query = jax.nn.one_hot(y_query.flatten().astype(int), num_classes)
+
   predictions = dirichlet_gp_predict(
       mean_func=mean_func,
       cov_func=cov_func,
@@ -524,35 +556,10 @@ def dirichlet_mnll(
       warp_func=warp_func,
       var_only=True,
   )
-  
-  # Get alpha_k from predictions (inverse of log-normal)
-  # mu_k is prediction[k][0], var_k is prediction[k][1]
-  # But recall we modeled log(alpha_k). So we approximate expectation of alpha.
-  # E[alpha] = exp(mu + var/2) for log-normal.
-  
-  # More accurately, Milios et al (2018) use: alpha = 1 / (exp(mu) - 1) 
-  # BUT our transform was: var = log(1/alpha + 1), mu = log(alpha) - var/2
-  # So we should invert that.
-  # However, let's stick to the pattern used in beta_mnll which computes alpha from variance?
-  # In beta_mnll: alpha = 1 / (exp(predictions[0][1]) - 1).
-  # This implies predictions[0][1] (the variance output) is being used to recover alpha.
-  # Let's follow the same logic for each class.
-  
-  alphas = []
-  for pred in predictions:
-      # Reconstruct alpha from the variance output, assuming the same transform was used
-      # var = log(1/alpha + 1) => exp(var) = 1/alpha + 1 => alpha = 1/(exp(var)-1)
-      alpha_k = 1 / (jnp.exp(pred[1]) - 1)
-      alphas.append(alpha_k)
-      
-  alpha_stacked = jnp.hstack(alphas)  # n' x K
-  alpha_sum = jnp.sum(alpha_stacked, axis=1, keepdims=True)
-  
-  # Predicted probabilities (expected value of Dirichlet is alpha_k / sum(alpha))
-  p_pred = alpha_stacked / alpha_sum  # n' x K
-  
-  # Negative log likelihood: - sum( y_k * log(p_k) )
-  nll = -jnp.sum(y_query * jnp.log(p_pred + 1e-10))
+  # Canonical MC-softmax posterior predictive (matches gp_uncertainty_multiclass).
+  unc = dirichlet_gp_uncertainty(predictions, seed=seed, n=n_mc)
+  p_pred = unc['categorical_mu']  # n' x K
+  nll = -jnp.mean(jnp.sum(y_query * jnp.log(p_pred + 1e-10), axis=1))
   return nll
 
 
@@ -564,111 +571,47 @@ def dirichlet_gp_nll(
     y_train,  # n x K
     warp_func=None,
 ):
-  """Negative log data likelihood for Dirichlet GP."""
+  """Negative log *marginal* likelihood of the latent Dirichlet-GP regression.
+
+  Summed over the K independent latent GPs. This is the standard GP NLML for
+  each latent regression,
+
+      0.5 rᵀ Kₙ⁻¹ r + Σ log diag(L) + 0.5 n log 2π,
+
+  with Kₙ = K + diag(v_latent_k), r = y_latent_k − mean, and L the Cholesky
+  factor of Kₙ. Because it requires no held-out labels, it can be used for
+  label-free model selection (e.g. choosing the kernel lengthscale by minimizing
+  this score). Returns a JAX scalar.
+  """
   if len(y_train.shape) == 1 or y_train.shape[1] == 1:
     y_train_flat = y_train.flatten().astype(int)
     if 'num_classes' in params:
-        num_classes = params['num_classes']
+      num_classes = params['num_classes']
     else:
-        num_classes = int(jnp.max(y_train_flat) + 1)
+      num_classes = int(jnp.max(y_train_flat) + 1)
     y_train = jax.nn.one_hot(y_train_flat, num_classes)
   else:
     num_classes = y_train.shape[1]
 
-  # hacky way of setting constant mean
-  params['constant'] = set_default_params_dirichlet(params, num_classes, warp_func=warp_func)
-  
-  predictions = dirichlet_gp_predict(
-      mean_func=mean_func,
-      cov_func=cov_func,
-      params=params,
-      x_query=x_train,
-      warp_func=warp_func,
-      var_only=False,
-  )
+  # Set the constant mean and signal_variance so the Beta-GP prior holds.
+  params = set_default_params_dirichlet(params, num_classes, warp_func=warp_func)
 
-  def vmap_func(y):
-    # y is a single sample, shape (K,) or (1,)
-    if len(y.shape) == 0: # scalar
-         y_reshaped = jnp.array([y])
-    else:
-         y_reshaped = y
-
-    # We need to pass it as (1, K) or (1, 1) to get_latent_observations
-    if y_reshaped.ndim == 1:
-        y_reshaped = y_reshaped[None, :]
-        
-    y_latent, var_latent = get_latent_observations_dirichlet(
-        params, y_reshaped, warp_func=warp_func
-    ) # 1 x K, 1 x K
-    
-    nll = []
-    for i in range(y_latent.shape[1]):
-      var = var_latent[:, i]
-      # predictions[i][1] is covariance matrix (N x N). We need the ith element for this sample?
-      # Wait, vmap scans over samples. So x_train has N samples.
-      # predictions is computed on x_train (N samples).
-      # But here we are inside vmap, presumably over N samples?
-      # The original code does `vmap(vmap_func)(y_train.T)`. y_train is N x C. T is C x N.
-      # That seems to imply iterating over classes? No.
-      # If y_train is N x num_classes. y_train.T is num_classes x N.
-      # In beta_gp_nll, y_train was N x 1 (if binary indices) or similar.
-      # Actually, `beta_gp_nll` calls `vmap(vmap_func)(y_train.T)`. 
-      # If y_train is N x 1, y_train.T is 1 x N. vmap iterates over the 1 dimension? 
-      # No, vmap iterates over the leading dimension of the input array.
-      # If y_train is N x 1, y_train.T is 1 x N. Leading dim is 1. 
-      # So it runs once? That doesn't seem right for NLL sum over samples.
-      # Ah, `y_train.T` implies we might be doing something else.
-      
-      # Let's look at `mvn_nll`. It takes `y`, `mu`, `cov`.
-      # If we are calculating NLL for the whole training set, we treat the whole vector y as one sample from a Multivariate Normal.
-      # So we don't vmap over samples. We compute one NLL scalar for the whole dataset vector.
-      # In `beta_gp_nll`, it returns `vmap(vmap_func)(y_train.T).mean(axis=0)`.
-      # If `y_train` is indices (N x 1), `y_train.T` is (1, N). vmap runs once.
-      # Inside `vmap_func`, `y` would be (N,) vector of labels.
-      # `y_latent` becomes (N, 2).
-      # Loop over 2 classes.
-      # `mvn_nll` computes NLL of vector y_latent[:, i] against mu and cov.
-      
-      # So for Dirichlet:
-      # We pass `y_train.T` which is `num_classes x N` ?? No.
-      # `y_train` here is one-hot N x K.
-      # `y_train.T` is K x N. 
-      # If we vmap over K, that's not right, because latent observations are coupled?
-      # Actually, latent GPs are independent a priori.
-      # And latent observations for class k only depend on y_k (in the diagonal approx).
-      # But `get_latent_observations_dirichlet` uses the whole y vector to compute alpha.
-      # Wait, `alpha_k = alpha_eps + y_k * strength`. It is decoupled!
-      # So yes, we can treat each class dimension independently for the NLL calculation?
-      # No, `y_train.T` is not correct if we want to pass all N samples into `get_latent_observations`.
-      
-      # Let's stick to the logic:
-      # We want to compute NLL = Sum_k NLL(LatentGP_k).
-      # Each LatentGP_k observes y_latent_k with noise var_latent_k.
-      
-      cov = predictions[i][1] + jnp.diag(var.flatten())
-      # predictions[i][0] is mu (N x 1).
-      # y_latent[:, i:i+1] is (1, 1) if vmapped over samples? No.
-      # If we are not vmapping over samples, we are doing full batch.
-      
-      nll.append(mvn_nll(y_latent[:, i:i+1], predictions[i][0], cov))
-    return jnp.sum(jnp.array(nll))
-
-  # If we follow beta_gp_nll exact structure:
-  # It assumes y_train is N x 1 indices.
-  # And calls vmap on y_train.T.
-  # We should probably just call the function once with the full batch.
-  # But to preserve exact structure let's see.
-  
-  # If we just run it on the full batch:
   y_latent, var_latent = get_latent_observations_dirichlet(
-        params, y_train, warp_func=warp_func
-  )
-  nll = []
-  for i in range(y_latent.shape[1]):
-      var = var_latent[:, i]
-      cov = predictions[i][1] + jnp.diag(var.flatten())
-      nll.append(mvn_nll(y_latent[:, i:i+1], predictions[i][0], cov))
-  
-  return jnp.sum(jnp.array(nll))
+      params, y_train, warp_func=warp_func
+  )  # n x K, n x K
+  cov = cov_func(params, x_train, warp_func=warp_func)  # n x n
+  mean = mean_func(params, x_train, warp_func=warp_func)  # n x 1
+  n = y_latent.shape[0]
 
+  total = 0.0
+  for k in range(num_classes):
+    cov_noisy = cov + jnp.diag(var_latent[:, k])
+    chol = jspla.cholesky(cov_noisy, lower=True)
+    residual = y_latent[:, k:k + 1] - mean
+    alpha = jspla.cho_solve((chol, True), residual)
+    total += (
+        0.5 * jnp.squeeze(residual.T @ alpha)
+        + jnp.sum(jnp.log(jnp.diag(chol)))
+        + 0.5 * n * jnp.log(2 * jnp.pi)
+    )
+  return total
