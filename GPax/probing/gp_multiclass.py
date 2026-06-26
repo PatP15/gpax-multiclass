@@ -488,30 +488,24 @@ def classifier_samples_uncertainty_multiclass(p_samples):
   }
 
 
-def dirichlet_gp_ood_score(predictions):
+def dirichlet_gp_ood_score(measures):
   """OOD score for a Dirichlet GP = negative summed latent posterior variance.
 
   Following the paper (§4.4), GPP uses the negative latent variance of the
   posterior latent function as a proxy for episteme for OOD detection: a high
   score (low posterior variance) means in-distribution, a low score means OOD.
-  Here we sum the posterior variances of the K independent latent GPs.
+  We sum the per-class posterior variances already exposed as `latent_var` by
+  `dirichlet_gp_uncertainty` / `gpp_multiclass`, so this is the single source of
+  truth for the score (no separate diag-extraction that could drift).
 
   Args:
-    predictions: list of (mu, var) tuples from `dirichlet_gp_predict`
-      (typically called with var_only=True).
+    measures: the dict returned by `gpp_multiclass` / `dirichlet_gp_uncertainty`
+      (must contain 'latent_var', shape n' x K).
 
   Returns:
     score: (n',) array; higher = more in-distribution.
   """
-  _, variances = get_latent_gp_dirichlet(predictions)
-  latent_vars = []
-  for v in variances:
-    if v.ndim > 1 and v.shape[0] == v.shape[1]:
-      latent_vars.append(jnp.diag(v)[:, None])  # full cov -> diagonal
-    else:
-      latent_vars.append(v)
-  total_var = jnp.sum(jnp.hstack(latent_vars), axis=1)  # (n',)
-  return -total_var
+  return -jnp.sum(measures['latent_var'], axis=1)
 
 
 def dirichlet_mnll(
@@ -593,8 +587,9 @@ def dirichlet_gp_nll(
   else:
     num_classes = y_train.shape[1]
 
-  # Set the constant mean and signal_variance so the Beta-GP prior holds.
-  params = set_default_params_dirichlet(params, num_classes, warp_func=warp_func)
+  # Set the constant mean and signal_variance so the Beta-GP prior holds. Work on
+  # a copy so we never mutate the caller's params dict (set_default_* writes in place).
+  params = set_default_params_dirichlet(dict(params), num_classes, warp_func=warp_func)
 
   y_latent, var_latent = get_latent_observations_dirichlet(
       params, y_train, warp_func=warp_func

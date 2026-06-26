@@ -1,9 +1,10 @@
 """WS3: K-scaling — does multiclass GPP degrade as the number of classes grows?
 
-Every multiclass experiment in the repo fixes K=3. Here we sweep K on a single
-clean label family (3D-Shapes *object hue*, a native 10-way primitive that M1's
-color-trained embeddings represent well) by grouping the 10 hues into K contiguous
-bins: K in {2,4,5,10}. For each K we report, GPP-Dirichlet vs LPE:
+Every multiclass experiment in the repo fixes K=3. Here we sweep K using targets the
+M1 embedding actually encodes (M1 was trained on the 64-way product of binarized
+scale/floor/wall/object-color and the 4 shapes), via balanced composite labels:
+K=2 floor warm/cool, K=4 shape, K=8 shape×scale, K=16 shape×scale×floor. This avoids
+the confound of probing features M1 never learned. For each K we report, GPP-Dirichlet vs LPE:
   - accuracy (argmax of the judged probabilities)
   - multiclass Brier score (lower = better calibrated probabilities)
   - ECE (expected calibration error, max-prob binning)
@@ -23,22 +24,28 @@ from scipy.stats import spearmanr
 from sklearn.model_selection import train_test_split
 from GPax.probing import probabilistic_probe_multiclass as ppm
 
-K_LIST = [2, 4, 5, 10]; NOBS = [32, 128, 512]; REPEATS = 5; NMC = 2000; N_TEST = 2000
+K_LIST = [2, 4, 8, 16]; NOBS = [32, 128, 512]; REPEATS = 5; NMC = 2000; N_TEST = 2000
 
 emb = np.load(f'{REPO}/results/embeddings/embeddings_M1.npy')
 d = np.load(f'{REPO}/results/embeddings/data_labels.npz', allow_pickle=True)
-# labels_raw stores the FLOAT factor values; object hue (col 2) takes 10 distinct
-# values. Map them to integer indices 0..9 (astype(int) would collapse to 0).
-hue_raw = d['labels_raw'][:, 2]
-hue = np.searchsorted(np.unique(hue_raw), hue_raw).astype(int)
-L = min(len(emb), len(hue)); emb, hue = emb[:L], hue[:L]
+# K-scaling must use targets the M1 embedding actually encodes, else accuracy decay
+# with K just reflects missing features, not a GPP property. M1 was trained on the
+# 64-way product of {binarized scale, floor, wall, object color} x {4 shapes}, so we
+# build balanced composite labels from those M1-supported factors:
+#   K=2  floor warm/cool ; K=4  shape ; K=8  shape x scale ; K=16 shape x scale x floor.
+floor = d['P1_floor'].astype(int); scale = d['P2_scale'].astype(int); shape = d['P2_shape'].astype(int)
+L = min(len(emb), len(floor)); emb = emb[:L]; floor, scale, shape = floor[:L], scale[:L], shape[:L]
 
 
-def k_labels(hue, K):
-    return np.minimum((hue * K) // 10, K - 1)       # group 10 hues into K contiguous bins
+def k_labels(K):
+    if K == 2:  return floor
+    if K == 4:  return shape
+    if K == 8:  return shape * 2 + scale
+    if K == 16: return (shape * 2 + scale) * 2 + floor
+    raise ValueError(K)
 
 
-def multiclass_ece(probs, y_true, n_bins=10):
+def multiclass_ece(probs, y_true, n_bins=15):   # 15 bins to match calibration_study/calib_analysis.py
     conf = probs.max(1); pred = probs.argmax(1); correct = (pred == y_true).astype(float)
     bins = np.linspace(0, 1, n_bins + 1); ece = 0.0
     for i in range(n_bins):
@@ -55,7 +62,7 @@ def brier(probs, y_true, K):
 
 rows = []
 for K in K_LIST:
-    y = k_labels(hue, K)
+    y = k_labels(K)
     Xtr_pool, Xte, ytr_pool, yte = train_test_split(emb, y, test_size=0.3, random_state=42, stratify=y)
     ridx = np.random.RandomState(0).choice(len(Xte), N_TEST, replace=False)
     Xte_s, yte_s = Xte[ridx], yte[ridx]; Xte_j = jnp.array(Xte_s)
@@ -122,7 +129,7 @@ for j, (metric, lab, better) in enumerate([('acc', 'accuracy', 'higher'),
         ax[j].errorbar(g.index, g['mean'], yerr=g['std'], marker='o', capsize=3, label=meth, color=c)
     ax[j].set_xlabel('number of classes K'); ax[j].set_ylabel(f'{lab} ({better} better)')
     ax[j].set_title(f'{lab} vs K  (n_obs={max(NOBS)})'); ax[j].set_xticks(K_LIST); ax[j].legend()
-plt.suptitle('Multiclass GPP K-scaling (3D-Shapes M1, object hue)', fontsize=13)
+plt.suptitle('Multiclass GPP K-scaling (3D-Shapes M1; floor / shape / shape×scale / shape×scale×floor)', fontsize=12)
 plt.tight_layout()
 fig.savefig(f'{outdir}/kscaling.png', dpi=200)
 print(f"\nSaved figure -> {outdir}/kscaling.png")

@@ -22,6 +22,9 @@ import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from GPax.probing import probabilistic_probe_multiclass as ppm
+# Canonical calibration metrics (15-bin ECE, multiclass Brier) — shared with calib_analysis.py
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from calib_analysis import ece, brier
 
 MODELS = [m for m in ['gemma', 'qwen', 'gemma4', 'qwen36']
           if os.path.exists(f'{REPO}/experiments/annomi/data/{m}/embeddings.npz')]
@@ -30,22 +33,11 @@ METHODS = ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE']
 
 
 def balance(X, y, seed):
+    # Mirrors experiments/annomi/annomi_common.balance_dataset (kept local to avoid
+    # importing that module's heavy transformers-dependent top level).
     rng = np.random.default_rng(seed); cls, cnt = np.unique(y, return_counts=True); mn = cnt.min()
     idx = np.concatenate([rng.choice(np.where(y == c)[0], mn, replace=False) for c in cls])
     rng.shuffle(idx); return X[idx], y[idx]
-
-
-def ece(probs, y, n_bins=10):
-    conf = probs.max(1); pred = probs.argmax(1); corr = (pred == y).astype(float)
-    b = np.linspace(0, 1, n_bins + 1); e = 0.0
-    for i in range(n_bins):
-        m = (conf > b[i]) & (conf <= b[i + 1])
-        if m.sum(): e += m.mean() * abs(corr[m].mean() - conf[m].mean())
-    return float(e)
-
-
-def brier(probs, y):
-    return float(np.mean(np.sum((probs - np.eye(K)[y]) ** 2, axis=1)))
 
 
 def predict(method, Xtr, ytr, Xte):
@@ -97,6 +89,14 @@ df = pd.DataFrame(rows)
 outdir = f'{REPO}/experiments/calibration_study/annomi_kernel'
 os.makedirs(outdir, exist_ok=True)
 df.to_csv(f'{outdir}/annomi_kernel_repeats_raw.csv', index=False)
+
+# Surface any silently-dropped seeds: a cell should have exactly len(SEEDS) rows.
+short = df.groupby(['model', 'method', 'n']).size().reset_index(name='cnt')
+short = short[short.cnt < len(SEEDS)]
+if not short.empty:
+    print(f"\nWARNING: {len(short)} (model,method,n) cells have < {len(SEEDS)} seeds "
+          f"(some runs failed and were dropped) — error bars there are over fewer seeds:")
+    print(short.to_string(index=False))
 
 # summary at n=2400 (mean +/- std over seeds)
 print("\n===== n=2400 mean+/-std over seeds (accuracy / ECE) =====")

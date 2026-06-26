@@ -76,12 +76,16 @@ for rep in range(REPEATS):
             try:
                 if len(np.unique(yo)) < 2:
                     raise ValueError('need >=2 classes')
-                l = ppm.lpe_multiclass(Xte_z_j, jnp.array(Xtr_z[io]), yo, num_classes=K, repeats=10)
+                l = ppm.lpe_multiclass(Xte_z_j, jnp.array(Xtr_z[io]), yo, num_classes=K, repeats=50)
                 lj = np.array(l['categorical_mu'])[:, TARGET]
                 la = np.array(l['Alea']).flatten(); lmi = np.array(l['information_gain']).flatten()
                 le = np.array(l['Episteme']).flatten()
             except Exception as e:
                 lj = la = lmi = le = np.full(len(yte), np.nan)
+            # Matched conditions: keep this (rep,p,n) cell only if BOTH methods produced
+            # output, so GPP vs LPE summaries are never over different subsets of draws.
+            if np.all(np.isnan(gj)) or np.all(np.isnan(lj)):
+                continue
             hg = H_gt(p)
             for i in range(len(yte)):
                 base = dict(rep=rep, p=p, n_obs=n, is_target=int(yte[i] == TARGET), H_gt=hg)
@@ -131,9 +135,11 @@ for meth in ['GPP', 'LPE']:
     thr = s.epi.median()
     low_epi = s[s.epi <= thr]
     dist_to_prior = float(np.mean(np.abs(low_epi.judged - prior)))
-    frac_extreme = float(np.mean((low_epi.judged > 0.8) | (low_epi.judged < 0.05)))
+    # Boundary-symmetric: 'extreme' = within 0.1 of either certainty boundary (0 or 1),
+    # so the confident-yes and confident-no sides are treated equally around the 1/K prior.
+    frac_extreme = float(np.mean((low_epi.judged > 0.9) | (low_epi.judged < 0.1)))
     res13[meth] = (dist_to_prior, frac_extreme)
-    print(f"  {meth}: mean|judged - 1/K| = {dist_to_prior:.3f}   frac extreme(>0.8 or <0.05) = {frac_extreme:.3f}")
+    print(f"  {meth}: mean|judged - 1/K| = {dist_to_prior:.3f}   frac extreme(>0.9 or <0.1) = {frac_extreme:.3f}")
 print(f"  (prior 1/K = {prior:.3f}; lower mean-dist and lower frac-extreme = more rational)")
 
 # ================= figure =================

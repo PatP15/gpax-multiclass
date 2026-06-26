@@ -139,7 +139,9 @@ def gpp_multiclass_select(
 
   if lengthscale == 'auto':
       if ls_grid is None:
-          base = float(np.sqrt(xo.shape[1]))   # ~ typical pairwise scale in standardized space
+          # ~ typical pairwise scale; sqrt(D) in standardized space, scaled by the
+          # mean per-dim std so the grid is sane even when standardize=False.
+          base = float(np.sqrt(xo.shape[1]) * np.mean(xo.std(0)))
           ls_grid = [base * f for f in (0.25, 0.5, 1.0, 2.0, 4.0)]
       best_ls, best_nll = None, np.inf
       for ls in ls_grid:
@@ -149,9 +151,17 @@ def gpp_multiclass_select(
               nll = float(gp.dirichlet_gp_nll(mean_func, cov_func, params, xo_j, y_observed))
           except Exception:
               nll = np.inf
-          if nll < best_nll:
+          # NaN guard: JAX Cholesky returns NaN (not an exception) for non-PD K, so
+          # the try/except alone can't catch it; nll < best_nll is also False for NaN.
+          if np.isfinite(nll) and nll < best_nll:
               best_nll, best_ls = nll, float(ls)
-      chosen, chosen_nll = best_ls, (None if best_nll == np.inf else best_nll)
+      if best_ls is None:
+          # Every grid lengthscale was non-finite — fall back to the grid median
+          # rather than forwarding None (which would crash the local kernel).
+          best_ls = float(np.median(ls_grid))
+          print(f"[gpp_multiclass_select] WARNING: all grid lengthscales gave non-finite "
+                f"NLL; falling back to median ls={best_ls}.")
+      chosen, chosen_nll = best_ls, (None if not np.isfinite(best_nll) else best_nll)
   else:
       chosen, chosen_nll = float(lengthscale), None
 

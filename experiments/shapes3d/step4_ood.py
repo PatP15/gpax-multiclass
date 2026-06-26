@@ -32,6 +32,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from GPax.probing import probabilistic_probe_multiclass as ppm
+from GPax.probing import gp_multiclass as gpm
 
 NOBS = [8, 16, 32, 64, 128]; K = 3; NMC = 2000; REPEATS = 5; N_ID = 800; N_OOD = 800
 
@@ -44,58 +45,67 @@ X_shape3 = emb[shape == 3]                                 # held-out 4th shape 
 Xtr_pool, Xte_in, ytr_pool, _ = train_test_split(X_in, y_in, test_size=0.3, random_state=42, stratify=y_in)
 
 
-def embed_noise_images(n_imgs=1024, seed=0):
-    """Regime B: embed uniform-noise images through the restored M1 CNN."""
+# ID statistics for standardizing the (scale-sensitive) baselines; GPP-cosine uses raw.
+mu_pool, sd_pool = Xtr_pool.mean(0), Xtr_pool.std(0) + 1e-8
+
+
+def restore_m1_state():
+    """Restore the trained M1 CNN (its final Dense is 64-way, M1's training label set)."""
     import cnn_model
-    nc = int(d['M1'].max()) + 1                            # M1 was trained on 64 labels
-    rng = jax.random.PRNGKey(0)
-    state = cnn_model.create_train_state(rng, num_classes=nc)
     from flax.training import checkpoints
+    nc = int(d['M1'].max()) + 1
+    state = cnn_model.create_train_state(jax.random.PRNGKey(0), num_classes=nc)
     state = checkpoints.restore_checkpoint(
         ckpt_dir=os.path.abspath(f'{REPO}/results/embeddings'), target=state, prefix='checkpoint_M1_')
+    return cnn_model, state
+
+
+def embed_noise(cnn_model, state, n_imgs, seed):
     noise = np.random.RandomState(seed).randint(0, 256, size=(n_imgs, 64, 64, 3), dtype=np.uint8)
-    embs = []
-    for i in range(0, n_imgs, 2048):
-        embs.append(np.array(cnn_model.get_embeddings(state, jnp.array(noise[i:i + 2048]))))
+    embs = [np.array(cnn_model.get_embeddings(state, jnp.array(noise[i:i + 2048])))
+            for i in range(0, n_imgs, 2048)]
     return np.concatenate(embs, 0)
 
 
 def gpp_scores(Xq, Xo, yo):
     g = ppm.gpp_multiclass(jnp.array(Xq), jnp.array(Xo), jax.nn.one_hot(yo, K), num_classes=K, n=NMC)
     return {
-        'GPP (neg latent var)': -np.sum(np.array(g['latent_var']), axis=1),
+        'GPP (neg latent var)': np.array(gpm.dirichlet_gp_ood_score(g)),  # paper §4.4 proxy
         'GPP (Episteme)': np.array(g['Episteme']).flatten(),
     }
 
 
 def baseline_scores(Xq, Xo, yo):
+    # Logistic/distance baselines run on ID-standardized inputs (fit on the train pool),
+    # matching step4_kscaling / step4_decomposition; only GPP-cosine uses raw embeddings.
+    Xq_z = jnp.array((Xq - mu_pool) / sd_pool); Xo_z = jnp.array((Xo - mu_pool) / sd_pool)
     out = {}
-    Xq_j, Xo_j = jnp.array(Xq), jnp.array(Xo)
     try:
-        out['Maha'] = np.array(ppm.maha_multiclass(Xq_j, Xo_j, yo, num_classes=K)['episteme'])
+        out['Maha'] = np.array(ppm.maha_multiclass(Xq_z, Xo_z, yo, num_classes=K)['episteme'])
     except Exception as e:
         out['Maha'] = np.full(len(Xq), np.nan); print('maha fail', e)
     try:
-        out['MSP'] = np.array(ppm.lp_maxprob_multiclass(Xq_j, Xo_j, yo)['episteme'])
+        out['MSP'] = np.array(ppm.lp_maxprob_multiclass(Xq_z, Xo_z, yo)['episteme'])
     except Exception as e:
         out['MSP'] = np.full(len(Xq), np.nan); print('msp fail', e)
     try:
-        l = ppm.lpe_multiclass(Xq_j, Xo_j, yo, num_classes=K, repeats=10)
+        l = ppm.lpe_multiclass(Xq_z, Xo_z, yo, num_classes=K, repeats=50)   # match calibration study
         out['LPE'] = -np.sum(np.array(l['epistemic_var']), axis=1)
     except Exception as e:
         out['LPE'] = np.full(len(Xq), np.nan); print('lpe fail', e)
     return out
 
 
-def run_regime(name, X_ood_full):
+def run_regime(name, ood_sampler):
+    """ood_sampler(rep, rng) -> OOD query embeddings for that rep (fresh/decorrelated)."""
     print(f"\n===== OOD regime: {name} =====", flush=True)
     rows = []
     for rep in range(REPEATS):
         rng = np.random.RandomState(100 + rep)
         id_q = Xte_in[rng.choice(len(Xte_in), N_ID, replace=False)]
-        ood_q = X_ood_full[rng.choice(len(X_ood_full), N_OOD, replace=False)]
+        ood_q = ood_sampler(rep, rng)
         Xq = np.vstack([id_q, ood_q])
-        is_ood = np.r_[np.zeros(N_ID), np.ones(N_OOD)]      # 1 = OOD
+        is_ood = np.r_[np.zeros(N_ID), np.ones(len(ood_q))]      # 1 = OOD
         for n in NOBS:
             io = rng.choice(len(Xtr_pool), n, replace=False)
             Xo, yo = Xtr_pool[io], ytr_pool[io]
@@ -105,20 +115,22 @@ def run_regime(name, X_ood_full):
             scores.update(gpp_scores(Xq, Xo, yo))
             scores.update(baseline_scores(Xq, Xo, yo))
             for method, s in scores.items():
-                if np.all(np.isfinite(s)) and np.std(s) > 1e-12:
-                    auroc = roc_auc_score(is_ood, -s)        # higher score = ID -> OOD has low score
-                else:
-                    auroc = np.nan
+                auroc = (roc_auc_score(is_ood, -s)               # higher score = ID -> OOD low
+                         if np.all(np.isfinite(s)) and np.std(s) > 1e-12 else np.nan)
                 rows.append(dict(regime=name, method=method, rep=rep, n_obs=n, auroc=auroc))
         print(f"  rep{rep} done", flush=True)
     return rows
 
 
 all_rows = []
-all_rows += run_regime('near-OOD (held-out shape 3)', X_shape3)
+# near-OOD: held-out 4th shape — large pool, independent per-rep draws.
+all_rows += run_regime('near-OOD (held-out shape 3)',
+                       lambda rep, rng: X_shape3[rng.choice(len(X_shape3), N_OOD, replace=False)])
+# far-OOD: FRESH uniform-noise images per rep (decorrelated repeats).
 try:
-    X_noise = embed_noise_images(1024, seed=0)
-    all_rows += run_regime('far-OOD (uniform noise)', X_noise)
+    _cnn, _m1 = restore_m1_state()
+    all_rows += run_regime('far-OOD (uniform noise)',
+                           lambda rep, rng: embed_noise(_cnn, _m1, N_OOD, seed=1000 + rep))
 except Exception as e:
     import traceback; traceback.print_exc()
     print('Far-OOD skipped (CNN restore failed):', e)
