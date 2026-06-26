@@ -27,7 +27,10 @@ K_LIST = [2, 4, 5, 10]; NOBS = [32, 128, 512]; REPEATS = 5; NMC = 2000; N_TEST =
 
 emb = np.load(f'{REPO}/results/embeddings/embeddings_M1.npy')
 d = np.load(f'{REPO}/results/embeddings/data_labels.npz', allow_pickle=True)
-hue = d['labels_raw'][:, 2].astype(int)            # object hue, 10 native values 0..9
+# labels_raw stores the FLOAT factor values; object hue (col 2) takes 10 distinct
+# values. Map them to integer indices 0..9 (astype(int) would collapse to 0).
+hue_raw = d['labels_raw'][:, 2]
+hue = np.searchsorted(np.unique(hue_raw), hue_raw).astype(int)
 L = min(len(emb), len(hue)); emb, hue = emb[:L], hue[:L]
 
 
@@ -56,6 +59,8 @@ for K in K_LIST:
     Xtr_pool, Xte, ytr_pool, yte = train_test_split(emb, y, test_size=0.3, random_state=42, stratify=y)
     ridx = np.random.RandomState(0).choice(len(Xte), N_TEST, replace=False)
     Xte_s, yte_s = Xte[ridx], yte[ridx]; Xte_j = jnp.array(Xte_s)
+    mu_, sd_ = Xtr_pool.mean(0), Xtr_pool.std(0) + 1e-8   # standardize LPE inputs (GPP stays raw)
+    Xte_z = jnp.array((Xte_s - mu_) / sd_)
     print(f"\n===== K={K}  (class counts: {np.bincount(ytr_pool)}) =====", flush=True)
     for rep in range(REPEATS):
         rng = np.random.RandomState(200 + rep)
@@ -76,7 +81,7 @@ for K in K_LIST:
                 print('GPP fail', K, n, e)
             # LPE
             try:
-                l = ppm.lpe_multiclass(Xte_j, jnp.array(Xo), yo, num_classes=K, repeats=10)
+                l = ppm.lpe_multiclass(Xte_z, jnp.array((Xo - mu_) / sd_), yo, num_classes=K, repeats=10)
                 lp_p = np.array(l['categorical_mu'])
                 rows.append(dict(K=K, rep=rep, n_obs=n, method='LPE',
                                  acc=float((lp_p.argmax(1) == yte_s).mean()),
