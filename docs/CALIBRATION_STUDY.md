@@ -179,22 +179,26 @@ capacity ceiling found above. **The productized local kernel (§5c, now in the p
 `gpp_multiclass_select`) closes this on real LLM embeddings too.** Client-motivation task (K=3), n=2400,
 **mean ± std over 5 seeds** (accuracy / 15-bin ECE, lower ECE = better):
 
-| model | GPP-cosine | GPP-RBF (auto ℓ) | GPP-Laplace (auto ℓ) | LPE |
-|---|---|---|---|---|
-| gemma  | 0.646 / 0.125 | 0.657 / 0.041 | **0.664 / 0.027** | 0.658 / 0.055 |
-| qwen   | 0.625 / 0.034 | 0.649 / 0.059 | **0.661** / 0.051 | 0.629 / **0.046** |
-| gemma4 | 0.503 / 0.211 | 0.522 / 0.069 | **0.576** / 0.084 | 0.512 / **0.059** |
-| qwen36 | 0.658 / 0.063 | 0.664 / 0.050 | **0.686 / 0.047** | 0.657 / 0.054 |
+| model | GPP-cosine | GPP-RBF (auto ℓ) | GPP-Laplace (auto ℓ) | LPE | LP-temp (CV-scaled) |
+|---|---|---|---|---|---|
+| gemma  | 0.646 / 0.125 | 0.657 / 0.041 | **0.664** / **0.027** | 0.662 / 0.061 | 0.658 / 0.041 |
+| qwen   | 0.625 / 0.034 | 0.649 / 0.059 | **0.661** / 0.051 | 0.630 / 0.041 | 0.629 / **0.037** |
+| gemma4 | 0.503 / 0.211 | 0.522 / 0.069 | **0.576** / 0.084 | 0.510 / 0.059 | 0.511 / **0.054** |
+| qwen36 | 0.658 / 0.063 | 0.664 / 0.050 | **0.686** / 0.047 | 0.655 / 0.056 | 0.658 / **0.038** |
 
-- **GPP-Laplace has the best accuracy on every model**, beating cosine, RBF *and* LPE.
-- **Calibration is dramatically improved on the scale-sensitive models**: cosine→Laplace ECE drops
-  4.6× on gemma (0.125→0.027) and cosine→RBF 3× on gemma4 (0.211→0.069).
-- This **overturns** the cosine-only conclusion that "LPE is the better-calibrated probe": with an
-  ML-tuned local kernel, GPP-Laplace beats LPE on **accuracy on all 4 models** and on **ECE on gemma
-  and qwen36**; on qwen and gemma4 LPE's ECE is marginally lower (0.046 vs 0.051; 0.059 vs 0.084) but
-  GPP-Laplace wins accuracy by a wide margin there (gemma4 0.576 vs 0.512). Net: GPP goes from
-  clearly-worse-calibrated (cosine) to calibration-competitive-or-better while leading on accuracy. Std
-  over seeds is small (~0.004–0.015). Script: `experiments/calibration_study/annomi_kernel_repeats.py`.
+- **GPP-Laplace has the best accuracy on every model**, beating cosine, RBF, LPE *and* the
+  temperature-scaled LP.
+- **The local kernel fixes the cosine calibration ceiling**: cosine→Laplace ECE drops 4.6× on gemma
+  (0.125→0.027) and cosine→RBF 3× on gemma4 (0.211→0.069).
+- **Temperature-scaled LP is a strong *calibration* baseline** (CV-fit T, no test leakage): ECE
+  0.037–0.054, beating GPP-Laplace's ECE on qwen/gemma4/qwen36. But it tracks LPE on accuracy
+  (≤ GPP-Laplace on **all 4** models, e.g. gemma4 0.511 vs 0.576). So the standard easy-calibration fix
+  *does* calibrate — but only by adding a held-out calibration step, and it gives up accuracy.
+- **Net (corrected, honest):** GPP no longer "loses calibration to LPE" (the cosine-only finding) — the
+  local kernel makes it calibration-competitive — but it is not strictly the lowest-ECE method either.
+  Its distinction is the **combination**: GPP-Laplace gives the best accuracy *and* competitive
+  calibration in a single model, with **no separate calibration set or temperature step**. Std over
+  seeds is small (~0.004–0.015). Script: `experiments/calibration_study/annomi_kernel_repeats.py`.
 
 ## 7. Conclusions & recommendations
 1. **The GPP calibration advantage is real and reproduces in binary.**
