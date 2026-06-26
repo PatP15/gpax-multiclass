@@ -34,12 +34,12 @@ Paths below are post-restructure. Fixes marked ✅ are applied on branch `cleanu
 | B6 | 🟠 High | ⚠️ Open (design) | Synthetic "ambiguity" ≠ paper's label-flip; `gt_prob` = interpolation weight |
 | B7 | 🟠 High | ⚠️ Open | MC uncertainty allocates `n_query×K×n` (`n` default 1e5) → OOM risk |
 | B8 | 🟠 High | ✅ Fixed | `uncertainty_analysis.py` `NameError` (no `import pandas`) |
-| B9 | 🟠 High | ⚠️ Open (design) | No repeats / single seed → no error bars (paper uses repeats) |
+| B9 | 🟠 High | ✅ Addressed | Repeats added: `annomi_kernel_repeats.py` + step4 scripts run ≥5 seeds with mean±std error bars |
 | B10 | 🟡 Med | ⚠️ Open | 3D-Shapes ground-truth teacher leakage + `num_classes` inferred from KNN |
 | B11 | 🟡 Med | ⚠️ Open | LPE bootstrap can omit a class → zero-prob column biases entropy/MI |
 | B12 | 🟡 Med | ⚠️ Open | Multiclass OvR-AUROC assumes prob columns align to sorted labels |
 | B13 | 🔵 Low | ✅ Fixed | ~14 leftover `jax.debug.print` in the jitted probe path |
-| B14 | 🔵 Low | ⚠️ Open | Dead/broken code: `dirichlet_gp_nll` (un-imported `mvn_nll`), `dirichlet_mnll` |
+| B14 | 🔵 Low | ✅ Fixed | `dirichlet_gp_nll` rewritten (correct GP NLML, used for ML lengthscale selection); `dirichlet_mnll` reimplemented on the MC-softmax predictive |
 | B15 | 🔵 Low | ⚠️ Open | `set_default_params_dirichlet` mutates the shared `params` dict |
 | B16 | 🔵 Low | ⚠️ Open | `verify_equivalence.py` uses the SE kernel, not the cosine kernel probes use |
 | B17 | 🔵 Low | ⚠️ Open | GPtorch JAX↔torch parity test claimed in PORTING_REPORT but not committed |
@@ -138,8 +138,11 @@ Ambiguity is fabricated by linearly interpolating two class centroids and declar
 interpolation weight `α` the ground-truth class-1 probability (`y_gt = alphas`). The paper
 instead injects label noise (flip positive→negative with probability `p`; `gt_prob = 1-p`).
 An embedding at the midpoint of two centroids has no defined Bernoulli label probability, so
-this conflates feature-space position with label uncertainty — and it's the *preferred* source
-for the Fig 5/6 calibration plots.
+this conflates feature-space position with label uncertainty. **Scope:** this applies only to the
+`simulate_ambiguous_data` *accuracy* path. The calibration study and the new decomposition validation
+use the paper's proper label-flip mechanism (`gpp_common.run_fuzziness_experiment`,
+`experiments/calibration_study/*`, `experiments/shapes3d/step4_decomposition_validation.py`), so the
+Fig 5/6 / §1 calibration and decomposition results are *not* affected by this issue.
 
 ### B7 — Monte-Carlo memory blow-up ⚠️ Open
 **Where:** `GPax/probing/gp_multiclass.py` (`dirichlet_gp_uncertainty`/`gp_uncertainty_multiclass`).
@@ -152,13 +155,15 @@ the default and the 3D-Shapes paths are exposed. Lower `n` or batch the queries.
 **Where:** `experiments/shapes3d/uncertainty_analysis.py`. Used `pd.DataFrame` with no
 `import pandas as pd` → crashes before Figs 5/6. **Fix:** added the import.
 
-### B9 — No repeats / single seed → no error bars ⚠️ Open (design)
+### B9 — No repeats / single seed → no error bars ✅ Addressed
 **Where:** `experiments/annomi/annomi_common.py` (`run_training_loop`),
 `experiments/shapes3d/gpp_extended_verification.py`.
 
-AnnoMI fits one stratified subsample per `n` with a fixed seed — no repeats, so the curves
-have no variance estimate (the paper averages over repeats). Wrap the per-`n` fit/eval in a
-seed loop and report mean ± std.
+The original `run_training_loop` still fits one seed, but the new validation scripts all run
+≥5 seeds and report mean ± std with CI bands: `experiments/calibration_study/annomi_kernel_repeats.py`
+(AnnoMI, 5 seeds) and `experiments/shapes3d/step4_{decomposition_validation,ood,kscaling}.py`. The
+headline AnnoMI/calibration claims now carry error bars; the legacy single-seed path remains for the
+original step2 plots.
 
 ---
 
@@ -186,7 +191,7 @@ fewer columns → silently corrupted or `nan` scores.
 ## Low / cleanup / watch
 
 - **B13 ✅ Fixed** — removed ~14 `jax.debug.print` host-callbacks from `GPax/probing/gp_multiclass.py` and `probabilistic_probe_multiclass.py` (they fire every jitted call → noise + serialized device→host sync).
-- **B14 ⚠️** — `gp_multiclass.py`: `dirichlet_gp_nll` calls `mvn_nll` which it never imports (would `NameError`) and assigns the whole params dict to `params['constant']`; `dirichlet_mnll` reconstructs `alpha` from the *posterior* variance (not the moment-match inverse). All unused by the experiment path — don't wire them in without fixing.
+- **B14 ✅ Fixed** — `gp_multiclass.py`: `dirichlet_gp_nll` rewritten to the correct summed GP log-marginal-likelihood (no more `mvn_nll`/`params['constant']` bug); it is now the basis for label-free lengthscale selection in `gpp_multiclass_select`. `dirichlet_mnll` reimplemented on the canonical MC-softmax predictive. `tests/test_parity.py` now asserts the K=2 judged-probability parity (corr > 0.999) instead of only printing it.
 - **B15 ⚠️** — `set_default_params_dirichlet` mutates the shared `params` dict in place (side effects can leak across the K-class loop / across calls).
 - **B16 ⚠️** — `experiments/shapes3d/verify_equivalence.py` builds its check with `squared_exponential_kernel`, not the `cosine_kernel` the probes actually use, and its broad `try/except` can make the check pass/return without printing FAILURE.
 - **B17 ⚠️** — `docs/PORTING_REPORT.md` claims a GPU-verified JAX↔torch parity suite, but `tests/test_parity.py` only checks binary-vs-multiclass episteme within JAX. No committed test exercises `GPtorch` against `GPax`.
