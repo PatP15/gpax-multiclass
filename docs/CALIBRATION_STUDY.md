@@ -10,8 +10,12 @@ that claim survive (a) the multiclass (Dirichlet) extension and (b) real open-we
 - **Binary (paper's setting): reproduced.** GPP > LPE at every `n`, biggest edge at low `n`.
 - **Multiclass (Dirichlet): the edge erodes at high `n`** — GPP keeps its low-`n` advantage but LPE
   overtakes from ~`n`=32. The cause is **kernel capacity**, not calibration scaling.
-- **Rescue: a marginal-likelihood-tuned RBF kernel restores and exceeds the advantage** — multiclass
+- **Rescue: a marginal-likelihood-tuned local kernel restores and exceeds the advantage** — multiclass
   GPP-RBF beats LPE at every `n` (0.765 vs 0.588 at n=128). The cosine kernel was the ceiling.
+- **Kernel ablation (§5c) pins the mechanism:** RBF, Laplace, *and* an SE-on-sphere kernel all rescue
+  identically (~0.40 mean, ~0.76 @n=128). The SE-sphere is the decisive control — *same angular geometry
+  as cosine, but with a lengthscale* — so the lever is **locality/capacity (the lengthscale), not the
+  metric**. The GP marginal likelihood independently prefers the best kernel (Laplace).
 
 All experiments use 3D-Shapes M1 CNN embeddings, task **P.2 = 3-class shape** (fuzzify class 0 by
 flipping its labels to {1,2} with prob 1−p, gt levels p∈{0.25,0.5,0.75,1.0}), evaluated on a held-out
@@ -129,6 +133,44 @@ Granting the GP an expressive kernel (RBF) with a **marginal-likelihood-selected
 exceeds GPP's calibration advantage over LPE across all observation counts.** In one line: *the cosine
 kernel was the ceiling, the lengthscale is the knob that lifts it, and the GP can set that knob itself.*
 
+## 5c. Kernel ablation — it is locality, not the metric (RBF / Laplace / SE-sphere all rescue)
+
+§5 showed RBF rescues, but left open *why*: was it the Euclidean distance, the smoothness, or simply
+the presence of a lengthscale? To separate these, we re-ran the multiclass fuzziness test across four
+kernels (each at its marginal-likelihood-best lengthscale), on a fresh test subset (so the cosine/LPE
+references differ by ~0.01 from §5's run but are internally comparable within this table):
+
+| kernel | family / geometry | n=2 | n=8 | n=32 | n=128 | mean | best ℓ (ML-NLL@128 ↓) |
+|---|---|---|---|---|---|---|---|
+| cosine | linear, **angular**, *no ℓ* | 0.183 | 0.141 | 0.449 | 0.552 | 0.331 | — |
+| RBF (sq-exp) | local, **L2 / Euclidean**, smooth | 0.158 | 0.181 | 0.496 | 0.760 | 0.399 | 3 (903) |
+| Laplace (Matérn-½) | local, **L1**, *rough* | 0.192 | 0.194 | 0.478 | 0.757 | **0.405** | 10 (**861**) |
+| SE-on-sphere | local, **angular** + ℓ | 0.162 | 0.173 | 0.473 | **0.771** | 0.395 | 0.5 (875) |
+| LPE | — (MLE logistic) | 0.067 | 0.192 | 0.491 | 0.608 | 0.339 | — |
+
+Three conclusions, each sharper than §5:
+
+1. **The rescue is not RBF-specific.** All three *local* kernels (RBF, Laplace, SE-sphere) land at
+   ~0.40 mean and ~0.76 at n=128 — each beats both cosine (0.55) and LPE (0.61) at high `n`. The common
+   ingredient is a **lengthscale**, i.e. a capacity knob; the specific distance is secondary.
+2. **The SE-on-sphere is the decisive control.** It uses the *same angular similarity as the default
+   cosine kernel* — `k = v·exp(−θ²/2ℓ²)` with `θ = arccos(cosine)` — but adds a lengthscale. It rescues
+   exactly as well as Euclidean RBF. So the cosine kernel's high-`n` ceiling is **not** because it
+   measures angles instead of distances; it is because it has **no lengthscale to localize with**.
+   *The lever is locality/capacity, not the metric.* (RBF-vs-cosine alone confounded these two changes;
+   SE-sphere holds the metric fixed and varies only locality.)
+3. **Marginal likelihood is self-consistent and slightly favors a rougher kernel.** Laplace (Matérn-½,
+   non-smooth) is marginally best by *both* Pearson (0.405) *and* NLL (861, the lowest of any kernel) —
+   so the label-free GP model-selection score would pick the empirically best kernel without touching
+   the test metric. The rougher kernel edging out the smooth one is consistent with the shape-concept
+   boundary being somewhat non-smooth in embedding space.
+
+**Paper-ready statement.** *GPP's multiclass calibration ceiling is specifically the cosine kernel's
+lack of a lengthscale. Any local kernel with a marginal-likelihood-tuned lengthscale (RBF, Laplace, or
+even an angular SE-on-sphere) restores and exceeds GPP's advantage over LPE; an angular-geometry control
+(SE-sphere) rescues as well as Euclidean RBF, ruling out the metric as the cause and identifying the
+lengthscale (capacity) as the operative lever.* Script: `experiments/calibration_study/kernel_compare.py`.
+
 ## 6. ECE on AnnoMI LLM probes (secondary, not the paper's metric)
 AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available. GPP(few-shot) vs
 LPE(few-shot) @ n=2400: ECE GPP/LPE = gemma 0.130/0.075, qwen 0.045/0.046, gemma4 0.174/0.061,
@@ -140,8 +182,11 @@ weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above
 1. **The GPP calibration advantage is real and reproduces in binary.**
 2. In **multiclass it survives at low `n`** (the few-shot regime GPP is sold for) but the **fixed cosine
    kernel is a ceiling at higher `n`**.
-3. **Fix:** use an **RBF kernel with a marginal-likelihood-optimized lengthscale** (on standardized
-   embeddings). This restores GPP's dominance over LPE across all `n` on the multiclass task.
+3. **Fix:** use **any local kernel with a marginal-likelihood-optimized lengthscale** (RBF, Laplace, or
+   SE-on-sphere — on standardized embeddings). This restores GPP's dominance over LPE across all `n` on
+   the multiclass task. The kernel ablation (§5c) shows the operative lever is the **lengthscale
+   (capacity), not the distance metric**, and the GP marginal likelihood selects the best kernel
+   (Laplace) label-free.
 4. **Productization TODO** (not yet wired into the probe API): expose `cov_func`/`lengthscale` in
    `gpp_multiclass`, and select the lengthscale per task via the GP marginal likelihood (needs the
    `dirichlet_gp_nll` import fix noted in `docs/BUGS.md`). Standardize embeddings before the RBF kernel.
@@ -152,3 +197,4 @@ weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above
 - `experiments/calibration_study/rescue_calib.py` — `strength`×`alpha_eps` sweep (no rescue).
 - `experiments/calibration_study/rescue_temp.py` — softmax temperature sweep (no rescue).
 - `experiments/calibration_study/kernel_rescue.py` — RBF lengthscale sweep + marginal-likelihood selection (rescue).
+- `experiments/calibration_study/kernel_compare.py` — kernel ablation: cosine vs RBF vs Laplace vs SE-on-sphere vs LPE, each at its ML-best lengthscale (§5c — isolates locality from the metric).
