@@ -171,12 +171,28 @@ even an angular SE-on-sphere) restores and exceeds GPP's advantage over LPE; an 
 (SE-sphere) rescues as well as Euclidean RBF, ruling out the metric as the cause and identifying the
 lengthscale (capacity) as the operative lever.* Script: `experiments/calibration_study/kernel_compare.py`.
 
-## 6. ECE on AnnoMI LLM probes (secondary, not the paper's metric)
-AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available. GPP(few-shot) vs
-LPE(few-shot) @ n=2400: ECE GPP/LPE = gemma 0.130/0.075, qwen 0.045/0.046, gemma4 0.174/0.061,
-qwen36 0.058/0.071. LPE is better-calibrated on gemma/gemma-4 (the high-variance-embedding models),
-comparable on the qwen models — consistent with GPP's cosine kernel being scale-sensitive. (This is a
-weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above is the real one.)
+## 6. ECE on AnnoMI LLM probes — and the kernel fix carries over to real embeddings
+AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available (a weaker, different
+notion than §1; the controlled 3D-Shapes fuzziness test is the real one). With the **cosine** kernel,
+LPE was better-calibrated than GPP on the high-variance-embedding models — consistent with the cosine
+capacity ceiling found above. **The productized local kernel (§5c, now in the probe API as
+`gpp_multiclass_select`) closes this on real LLM embeddings too.** Client-motivation task (K=3), n=2400,
+**mean ± std over 5 seeds** (accuracy / ECE, lower ECE = better):
+
+| model | GPP-cosine | GPP-RBF (auto ℓ) | GPP-Laplace (auto ℓ) | LPE |
+|---|---|---|---|---|
+| gemma  | 0.646 / 0.124 | 0.657 / 0.034 | **0.664 / 0.027** | 0.659 / 0.051 |
+| qwen   | 0.625 / **0.028** | 0.649 / 0.057 | **0.661** / 0.046 | 0.625 / 0.043 |
+| gemma4 | 0.503 / 0.211 | 0.522 / 0.067 | **0.576** / 0.084 | 0.512 / **0.056** |
+| qwen36 | 0.658 / 0.057 | 0.664 / 0.045 | **0.686 / 0.041** | 0.660 / 0.053 |
+
+- **GPP-Laplace has the best accuracy on every model**, beating cosine, RBF *and* LPE.
+- **Calibration is dramatically improved on the scale-sensitive models**: cosine→Laplace ECE drops
+  4.6× on gemma (0.124→0.027) and cosine→RBF 3× on gemma4 (0.211→0.067).
+- This **reverses** the cosine-only conclusion: with an ML-tuned local kernel, GPP-Laplace beats LPE on
+  accuracy on all 4 models and on ECE on 3 of 4 (gemma4 is the lone ECE exception, where Laplace still
+  wins accuracy by a wide margin, 0.576 vs 0.512). Std over seeds is small (~0.004–0.015), so the
+  differences are real. Script: `experiments/calibration_study/annomi_kernel_repeats.py`.
 
 ## 7. Conclusions & recommendations
 1. **The GPP calibration advantage is real and reproduces in binary.**
@@ -187,9 +203,10 @@ weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above
    the multiclass task. The kernel ablation (§5c) shows the operative lever is the **lengthscale
    (capacity), not the distance metric**, and the GP marginal likelihood selects the best kernel
    (Laplace) label-free.
-4. **Productization TODO** (not yet wired into the probe API): expose `cov_func`/`lengthscale` in
-   `gpp_multiclass`, and select the lengthscale per task via the GP marginal likelihood (needs the
-   `dirichlet_gp_nll` import fix noted in `docs/BUGS.md`). Standardize embeddings before the RBF kernel.
+4. **Productized (done).** `gpp_multiclass` now exposes `kernel={cosine|rbf|laplace|rbf_sphere}` and
+   `lengthscale`, and `gpp_multiclass_select` standardizes inputs and picks the lengthscale per task by
+   minimizing the GP marginal likelihood (`dirichlet_gp_nll`, rewritten correctly — see `docs/BUGS.md`).
+   §6 confirms this carries the calibration/accuracy win over to real AnnoMI LLM embeddings.
 
 ## Reproduction
 - `experiments/calibration_study/calib_analysis.py` — ECE/Brier, AnnoMI GPP vs LPE.
@@ -198,3 +215,7 @@ weaker, different notion than §1; the controlled 3D-Shapes fuzziness test above
 - `experiments/calibration_study/rescue_temp.py` — softmax temperature sweep (no rescue).
 - `experiments/calibration_study/kernel_rescue.py` — RBF lengthscale sweep + marginal-likelihood selection (rescue).
 - `experiments/calibration_study/kernel_compare.py` — kernel ablation: cosine vs RBF vs Laplace vs SE-on-sphere vs LPE, each at its ML-best lengthscale (§5c — isolates locality from the metric).
+- `experiments/calibration_study/annomi_kernel_repeats.py` — §6: AnnoMI cosine vs RBF vs Laplace vs LPE with 5-seed error bars (productized-kernel validation on real LLM embeddings).
+- `experiments/shapes3d/step4_decomposition_validation.py` — quantitative aleatoric/epistemic validation (alea tracks fuzziness; MI tracks data scarcity; not "confidently ignorant").
+- `experiments/shapes3d/step4_ood.py` — multiclass OOD detection (near-OOD novel class + far-OOD noise) vs Maha/MSP/LPE.
+- `experiments/shapes3d/step4_kscaling.py` — K∈{2,4,5,10} accuracy/Brier/ECE vs LPE + MI-monotonicity (generality beyond K=3).
