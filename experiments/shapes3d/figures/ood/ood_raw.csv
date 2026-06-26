@@ -1,251 +1,251 @@
 regime,method,rep,n_obs,auroc
 near-OOD (held-out shape 3),GPP (neg latent var),0,8,0.789934375
 near-OOD (held-out shape 3),GPP (Episteme),0,8,0.720465625
-near-OOD (held-out shape 3),Maha,0,8,0.5102734375
-near-OOD (held-out shape 3),MSP,0,8,0.567621875
-near-OOD (held-out shape 3),LPE,0,8,0.5271328125
+near-OOD (held-out shape 3),Maha,0,8,0.6669296874999999
+near-OOD (held-out shape 3),MSP,0,8,0.5164640625
+near-OOD (held-out shape 3),LPE,0,8,0.62451875
 near-OOD (held-out shape 3),GPP (neg latent var),0,16,0.70214375
 near-OOD (held-out shape 3),GPP (Episteme),0,16,0.6498398437499999
-near-OOD (held-out shape 3),Maha,0,16,0.47130000000000005
-near-OOD (held-out shape 3),MSP,0,16,0.45318749999999997
-near-OOD (held-out shape 3),LPE,0,16,0.4375640625
+near-OOD (held-out shape 3),Maha,0,16,0.4598640625
+near-OOD (held-out shape 3),MSP,0,16,0.38462500000000005
+near-OOD (held-out shape 3),LPE,0,16,0.4997359375
 near-OOD (held-out shape 3),GPP (neg latent var),0,32,0.8666828125
 near-OOD (held-out shape 3),GPP (Episteme),0,32,0.5046171875
 near-OOD (held-out shape 3),Maha,0,32,0.8964125000000001
-near-OOD (held-out shape 3),MSP,0,32,0.35708281249999996
-near-OOD (held-out shape 3),LPE,0,32,0.42823984375
+near-OOD (held-out shape 3),MSP,0,32,0.31812656250000004
+near-OOD (held-out shape 3),LPE,0,32,0.49121093750000006
 near-OOD (held-out shape 3),GPP (neg latent var),0,64,0.9306937500000001
 near-OOD (held-out shape 3),GPP (Episteme),0,64,0.44595
 near-OOD (held-out shape 3),Maha,0,64,0.920925
-near-OOD (held-out shape 3),MSP,0,64,0.32789296875
-near-OOD (held-out shape 3),LPE,0,64,0.404915625
+near-OOD (held-out shape 3),MSP,0,64,0.25747343749999996
+near-OOD (held-out shape 3),LPE,0,64,0.401909375
 near-OOD (held-out shape 3),GPP (neg latent var),0,128,0.9313703124999999
 near-OOD (held-out shape 3),GPP (Episteme),0,128,0.38470781249999997
 near-OOD (held-out shape 3),Maha,0,128,0.9006546875
-near-OOD (held-out shape 3),MSP,0,128,0.22106718749999998
-near-OOD (held-out shape 3),LPE,0,128,0.55286484375
+near-OOD (held-out shape 3),MSP,0,128,0.2058640625
+near-OOD (held-out shape 3),LPE,0,128,0.39663593750000004
 near-OOD (held-out shape 3),GPP (neg latent var),1,8,0.63176875
 near-OOD (held-out shape 3),GPP (Episteme),1,8,0.6702484375
-near-OOD (held-out shape 3),Maha,1,8,0.553528125
-near-OOD (held-out shape 3),MSP,1,8,0.5886890625000001
-near-OOD (held-out shape 3),LPE,1,8,0.518103125
+near-OOD (held-out shape 3),Maha,1,8,0.6122796875000001
+near-OOD (held-out shape 3),MSP,1,8,0.5574890625000001
+near-OOD (held-out shape 3),LPE,1,8,0.7141023437499999
 near-OOD (held-out shape 3),GPP (neg latent var),1,16,0.8080429687499999
 near-OOD (held-out shape 3),GPP (Episteme),1,16,0.6587328125
-near-OOD (held-out shape 3),Maha,1,16,0.82032421875
-near-OOD (held-out shape 3),MSP,1,16,0.353028125
-near-OOD (held-out shape 3),LPE,1,16,0.46998359375
+near-OOD (held-out shape 3),Maha,1,16,0.811521875
+near-OOD (held-out shape 3),MSP,1,16,0.4680421875
+near-OOD (held-out shape 3),LPE,1,16,0.7980750000000001
 near-OOD (held-out shape 3),GPP (neg latent var),1,32,0.86386875
 near-OOD (held-out shape 3),GPP (Episteme),1,32,0.6987859375000001
 near-OOD (held-out shape 3),Maha,1,32,0.83788125
-near-OOD (held-out shape 3),MSP,1,32,0.4688265625
-near-OOD (held-out shape 3),LPE,1,32,0.5743578125
+near-OOD (held-out shape 3),MSP,1,32,0.36742343749999995
+near-OOD (held-out shape 3),LPE,1,32,0.64901875
 near-OOD (held-out shape 3),GPP (neg latent var),1,64,0.902828125
 near-OOD (held-out shape 3),GPP (Episteme),1,64,0.4564078125
 near-OOD (held-out shape 3),Maha,1,64,0.9002140625000001
-near-OOD (held-out shape 3),MSP,1,64,0.278209375
-near-OOD (held-out shape 3),LPE,1,64,0.47039921875
+near-OOD (held-out shape 3),MSP,1,64,0.2875671875
+near-OOD (held-out shape 3),LPE,1,64,0.4745375
 near-OOD (held-out shape 3),GPP (neg latent var),1,128,0.9175953124999999
 near-OOD (held-out shape 3),GPP (Episteme),1,128,0.3682515625
 near-OOD (held-out shape 3),Maha,1,128,0.8540078125000001
-near-OOD (held-out shape 3),MSP,1,128,0.22522890625000003
-near-OOD (held-out shape 3),LPE,1,128,0.4152515625
+near-OOD (held-out shape 3),MSP,1,128,0.18779999999999997
+near-OOD (held-out shape 3),LPE,1,128,0.2575390625
 near-OOD (held-out shape 3),GPP (neg latent var),2,8,0.7591671874999999
 near-OOD (held-out shape 3),GPP (Episteme),2,8,0.6791328125
-near-OOD (held-out shape 3),Maha,2,8,0.6859265625
-near-OOD (held-out shape 3),MSP,2,8,0.459753125
-near-OOD (held-out shape 3),LPE,2,8,0.5505765625
+near-OOD (held-out shape 3),Maha,2,8,0.7144765625
+near-OOD (held-out shape 3),MSP,2,8,0.420590625
+near-OOD (held-out shape 3),LPE,2,8,0.6590359375
 near-OOD (held-out shape 3),GPP (neg latent var),2,16,0.73964375
 near-OOD (held-out shape 3),GPP (Episteme),2,16,0.4838
-near-OOD (held-out shape 3),Maha,2,16,0.7825500000000001
-near-OOD (held-out shape 3),MSP,2,16,0.19078749999999997
-near-OOD (held-out shape 3),LPE,2,16,0.2860953125
+near-OOD (held-out shape 3),Maha,2,16,0.7727796875
+near-OOD (held-out shape 3),MSP,2,16,0.2016046875
+near-OOD (held-out shape 3),LPE,2,16,0.412325
 near-OOD (held-out shape 3),GPP (neg latent var),2,32,0.8338171875
 near-OOD (held-out shape 3),GPP (Episteme),2,32,0.572034375
 near-OOD (held-out shape 3),Maha,2,32,0.861475
-near-OOD (held-out shape 3),MSP,2,32,0.301484375
-near-OOD (held-out shape 3),LPE,2,32,0.5056734374999999
+near-OOD (held-out shape 3),MSP,2,32,0.30698281250000004
+near-OOD (held-out shape 3),LPE,2,32,0.638240625
 near-OOD (held-out shape 3),GPP (neg latent var),2,64,0.8955859374999999
 near-OOD (held-out shape 3),GPP (Episteme),2,64,0.44238125000000006
 near-OOD (held-out shape 3),Maha,2,64,0.8411179687500001
-near-OOD (held-out shape 3),MSP,2,64,0.29274765625
-near-OOD (held-out shape 3),LPE,2,64,0.6606523437500001
+near-OOD (held-out shape 3),MSP,2,64,0.2507421875
+near-OOD (held-out shape 3),LPE,2,64,0.6420296875
 near-OOD (held-out shape 3),GPP (neg latent var),2,128,0.8898234375
 near-OOD (held-out shape 3),GPP (Episteme),2,128,0.4266484375
 near-OOD (held-out shape 3),Maha,2,128,0.8785625
-near-OOD (held-out shape 3),MSP,2,128,0.26440624999999995
-near-OOD (held-out shape 3),LPE,2,128,0.46211640624999994
+near-OOD (held-out shape 3),MSP,2,128,0.27023437499999997
+near-OOD (held-out shape 3),LPE,2,128,0.5265875
 near-OOD (held-out shape 3),GPP (neg latent var),3,8,0.6820515625000001
 near-OOD (held-out shape 3),GPP (Episteme),3,8,0.7132937499999998
-near-OOD (held-out shape 3),Maha,3,8,0.43545625
-near-OOD (held-out shape 3),MSP,3,8,0.49928593749999994
-near-OOD (held-out shape 3),LPE,3,8,0.6133546875
+near-OOD (held-out shape 3),Maha,3,8,0.41427187499999996
+near-OOD (held-out shape 3),MSP,3,8,0.5551421875
+near-OOD (held-out shape 3),LPE,3,8,0.6639234374999999
 near-OOD (held-out shape 3),GPP (neg latent var),3,16,0.7385390625
 near-OOD (held-out shape 3),GPP (Episteme),3,16,0.691128125
-near-OOD (held-out shape 3),Maha,3,16,0.761353125
-near-OOD (held-out shape 3),MSP,3,16,0.368721875
-near-OOD (held-out shape 3),LPE,3,16,0.612278125
+near-OOD (held-out shape 3),Maha,3,16,0.6426828125
+near-OOD (held-out shape 3),MSP,3,16,0.49410781249999997
+near-OOD (held-out shape 3),LPE,3,16,0.6663562500000001
 near-OOD (held-out shape 3),GPP (neg latent var),3,32,0.8902921875
 near-OOD (held-out shape 3),GPP (Episteme),3,32,0.5381484375
 near-OOD (held-out shape 3),Maha,3,32,0.8452890624999998
-near-OOD (held-out shape 3),MSP,3,32,0.34806484375
-near-OOD (held-out shape 3),LPE,3,32,0.6275671875
+near-OOD (held-out shape 3),MSP,3,32,0.4767437499999999
+near-OOD (held-out shape 3),LPE,3,32,0.733196875
 near-OOD (held-out shape 3),GPP (neg latent var),3,64,0.8776640625000001
 near-OOD (held-out shape 3),GPP (Episteme),3,64,0.5846375
 near-OOD (held-out shape 3),Maha,3,64,0.87985625
-near-OOD (held-out shape 3),MSP,3,64,0.26666640625
-near-OOD (held-out shape 3),LPE,3,64,0.620578125
+near-OOD (held-out shape 3),MSP,3,64,0.3260578125
+near-OOD (held-out shape 3),LPE,3,64,0.618621875
 near-OOD (held-out shape 3),GPP (neg latent var),3,128,0.8877781250000001
 near-OOD (held-out shape 3),GPP (Episteme),3,128,0.409934375
 near-OOD (held-out shape 3),Maha,3,128,0.8554234374999999
-near-OOD (held-out shape 3),MSP,3,128,0.258909375
-near-OOD (held-out shape 3),LPE,3,128,0.7711390624999999
+near-OOD (held-out shape 3),MSP,3,128,0.2648484375
+near-OOD (held-out shape 3),LPE,3,128,0.492275
 near-OOD (held-out shape 3),GPP (neg latent var),4,8,0.7483203125
 near-OOD (held-out shape 3),GPP (Episteme),4,8,0.71628203125
-near-OOD (held-out shape 3),Maha,4,8,0.58955625
-near-OOD (held-out shape 3),MSP,4,8,0.39016874999999995
-near-OOD (held-out shape 3),LPE,4,8,0.559065625
+near-OOD (held-out shape 3),Maha,4,8,0.697309375
+near-OOD (held-out shape 3),MSP,4,8,0.43253593749999997
+near-OOD (held-out shape 3),LPE,4,8,0.7312749999999999
 near-OOD (held-out shape 3),GPP (neg latent var),4,16,0.78093125
 near-OOD (held-out shape 3),GPP (Episteme),4,16,0.420740625
-near-OOD (held-out shape 3),Maha,4,16,0.6270171874999999
-near-OOD (held-out shape 3),MSP,4,16,0.3893171875
-near-OOD (held-out shape 3),LPE,4,16,0.43111562499999995
+near-OOD (held-out shape 3),Maha,4,16,0.68286875
+near-OOD (held-out shape 3),MSP,4,16,0.333565625
+near-OOD (held-out shape 3),LPE,4,16,0.377715625
 near-OOD (held-out shape 3),GPP (neg latent var),4,32,0.8595375
 near-OOD (held-out shape 3),GPP (Episteme),4,32,0.46219687499999995
 near-OOD (held-out shape 3),Maha,4,32,0.8869953125000001
-near-OOD (held-out shape 3),MSP,4,32,0.3580390625
-near-OOD (held-out shape 3),LPE,4,32,0.6318484375000001
+near-OOD (held-out shape 3),MSP,4,32,0.32386875
+near-OOD (held-out shape 3),LPE,4,32,0.6261171875
 near-OOD (held-out shape 3),GPP (neg latent var),4,64,0.9214140625
 near-OOD (held-out shape 3),GPP (Episteme),4,64,0.32093281249999994
 near-OOD (held-out shape 3),Maha,4,64,0.8958921875
-near-OOD (held-out shape 3),MSP,4,64,0.38714531249999995
-near-OOD (held-out shape 3),LPE,4,64,0.6278640625
+near-OOD (held-out shape 3),MSP,4,64,0.23359531249999999
+near-OOD (held-out shape 3),LPE,4,64,0.42726875
 near-OOD (held-out shape 3),GPP (neg latent var),4,128,0.8958296874999999
 near-OOD (held-out shape 3),GPP (Episteme),4,128,0.6741109375
-near-OOD (held-out shape 3),Maha,4,128,0.9023890625000001
-near-OOD (held-out shape 3),MSP,4,128,0.3129015625
-near-OOD (held-out shape 3),LPE,4,128,0.644203125
-far-OOD (uniform noise),GPP (neg latent var),0,8,0.46395625
-far-OOD (uniform noise),GPP (Episteme),0,8,0.4567046875
-far-OOD (uniform noise),Maha,0,8,0.22859687500000003
-far-OOD (uniform noise),MSP,0,8,0.7308078125
-far-OOD (uniform noise),LPE,0,8,0.4720890625
-far-OOD (uniform noise),GPP (neg latent var),0,16,0.667059375
-far-OOD (uniform noise),GPP (Episteme),0,16,0.46873124999999993
-far-OOD (uniform noise),Maha,0,16,0.3195234375
-far-OOD (uniform noise),MSP,0,16,0.42971562500000005
-far-OOD (uniform noise),LPE,0,16,0.12145312500000001
-far-OOD (uniform noise),GPP (neg latent var),0,32,0.5936656250000001
-far-OOD (uniform noise),GPP (Episteme),0,32,0.7111828124999999
-far-OOD (uniform noise),Maha,0,32,0.22785625
-far-OOD (uniform noise),MSP,0,32,0.76896875
-far-OOD (uniform noise),LPE,0,32,0.56349375
-far-OOD (uniform noise),GPP (neg latent var),0,64,0.34872812499999994
-far-OOD (uniform noise),GPP (Episteme),0,64,0.7184828125
-far-OOD (uniform noise),Maha,0,64,0.12334062500000001
-far-OOD (uniform noise),MSP,0,64,0.47545781249999997
-far-OOD (uniform noise),LPE,0,64,0.65045
-far-OOD (uniform noise),GPP (neg latent var),0,128,0.48442656250000005
-far-OOD (uniform noise),GPP (Episteme),0,128,0.6125625
-far-OOD (uniform noise),Maha,0,128,0.09599374999999999
-far-OOD (uniform noise),MSP,0,128,0.7829625
-far-OOD (uniform noise),LPE,0,128,0.7215093749999999
-far-OOD (uniform noise),GPP (neg latent var),1,8,0.27371093750000003
-far-OOD (uniform noise),GPP (Episteme),1,8,0.2707828125
-far-OOD (uniform noise),Maha,1,8,0.8007624999999999
-far-OOD (uniform noise),MSP,1,8,0.7408484375
-far-OOD (uniform noise),LPE,1,8,0.434984375
-far-OOD (uniform noise),GPP (neg latent var),1,16,0.39881875
-far-OOD (uniform noise),GPP (Episteme),1,16,0.70836875
-far-OOD (uniform noise),Maha,1,16,0.35114531250000003
-far-OOD (uniform noise),MSP,1,16,0.8853265625000001
-far-OOD (uniform noise),LPE,1,16,0.5296375
-far-OOD (uniform noise),GPP (neg latent var),1,32,0.42001875
-far-OOD (uniform noise),GPP (Episteme),1,32,0.5770703125
-far-OOD (uniform noise),Maha,1,32,0.119584375
-far-OOD (uniform noise),MSP,1,32,0.606275
-far-OOD (uniform noise),LPE,1,32,0.3861796875
-far-OOD (uniform noise),GPP (neg latent var),1,64,0.5047999999999999
-far-OOD (uniform noise),GPP (Episteme),1,64,0.6440750000000001
-far-OOD (uniform noise),Maha,1,64,0.23310625
-far-OOD (uniform noise),MSP,1,64,0.667696875
-far-OOD (uniform noise),LPE,1,64,0.5157265625
-far-OOD (uniform noise),GPP (neg latent var),1,128,0.40535859375000005
-far-OOD (uniform noise),GPP (Episteme),1,128,0.5323359375
-far-OOD (uniform noise),Maha,1,128,0.0346046875
-far-OOD (uniform noise),MSP,1,128,0.28971562500000003
-far-OOD (uniform noise),LPE,1,128,0.2458609375
-far-OOD (uniform noise),GPP (neg latent var),2,8,0.4174609375
-far-OOD (uniform noise),GPP (Episteme),2,8,0.4718953125
-far-OOD (uniform noise),Maha,2,8,0.7862296874999999
-far-OOD (uniform noise),MSP,2,8,0.7201890624999999
-far-OOD (uniform noise),LPE,2,8,0.35414218750000004
-far-OOD (uniform noise),GPP (neg latent var),2,16,0.5658828125
-far-OOD (uniform noise),GPP (Episteme),2,16,0.7042484375
-far-OOD (uniform noise),Maha,2,16,0.2803765625
-far-OOD (uniform noise),MSP,2,16,0.6962390624999999
-far-OOD (uniform noise),LPE,2,16,0.2809328125
-far-OOD (uniform noise),GPP (neg latent var),2,32,0.17550000000000002
-far-OOD (uniform noise),GPP (Episteme),2,32,0.5691499999999999
-far-OOD (uniform noise),Maha,2,32,0.2058109375
-far-OOD (uniform noise),MSP,2,32,0.5969796875000001
-far-OOD (uniform noise),LPE,2,32,0.7385296874999999
-far-OOD (uniform noise),GPP (neg latent var),2,64,0.5947499999999999
-far-OOD (uniform noise),GPP (Episteme),2,64,0.45789218750000005
-far-OOD (uniform noise),Maha,2,64,0.2544484375
-far-OOD (uniform noise),MSP,2,64,0.65716640625
-far-OOD (uniform noise),LPE,2,64,0.699675
-far-OOD (uniform noise),GPP (neg latent var),2,128,0.5271703125
-far-OOD (uniform noise),GPP (Episteme),2,128,0.6384171875
-far-OOD (uniform noise),Maha,2,128,0.1189359375
-far-OOD (uniform noise),MSP,2,128,0.5946125
-far-OOD (uniform noise),LPE,2,128,0.6043703125
-far-OOD (uniform noise),GPP (neg latent var),3,8,0.35640781250000003
-far-OOD (uniform noise),GPP (Episteme),3,8,0.2855453125
-far-OOD (uniform noise),Maha,3,8,0.19946875
-far-OOD (uniform noise),MSP,3,8,0.7121359374999999
-far-OOD (uniform noise),LPE,3,8,0.7314609375000001
-far-OOD (uniform noise),GPP (neg latent var),3,16,0.29689374999999996
-far-OOD (uniform noise),GPP (Episteme),3,16,0.5622328125
-far-OOD (uniform noise),Maha,3,16,0.348290625
-far-OOD (uniform noise),MSP,3,16,0.7439515624999999
-far-OOD (uniform noise),LPE,3,16,0.5293359375
-far-OOD (uniform noise),GPP (neg latent var),3,32,0.2763640625
-far-OOD (uniform noise),GPP (Episteme),3,32,0.2343421875
-far-OOD (uniform noise),Maha,3,32,0.14914375000000002
-far-OOD (uniform noise),MSP,3,32,0.5941703125000001
-far-OOD (uniform noise),LPE,3,32,0.293490625
-far-OOD (uniform noise),GPP (neg latent var),3,64,0.4439625
-far-OOD (uniform noise),GPP (Episteme),3,64,0.6159953125000001
-far-OOD (uniform noise),Maha,3,64,0.21340156250000003
-far-OOD (uniform noise),MSP,3,64,0.7336265625
-far-OOD (uniform noise),LPE,3,64,0.44970937499999997
-far-OOD (uniform noise),GPP (neg latent var),3,128,0.5901695312499999
-far-OOD (uniform noise),GPP (Episteme),3,128,0.6009609375
-far-OOD (uniform noise),Maha,3,128,0.07982812499999999
-far-OOD (uniform noise),MSP,3,128,0.5587812499999999
-far-OOD (uniform noise),LPE,3,128,0.62770625
-far-OOD (uniform noise),GPP (neg latent var),4,8,0.45073437499999996
-far-OOD (uniform noise),GPP (Episteme),4,8,0.4939390625
-far-OOD (uniform noise),Maha,4,8,0.28029062499999996
-far-OOD (uniform noise),MSP,4,8,0.7829468750000002
-far-OOD (uniform noise),LPE,4,8,0.6376125
-far-OOD (uniform noise),GPP (neg latent var),4,16,0.30582031249999997
-far-OOD (uniform noise),GPP (Episteme),4,16,0.4852203125000001
-far-OOD (uniform noise),Maha,4,16,0.6883171875
-far-OOD (uniform noise),MSP,4,16,0.3451609375
-far-OOD (uniform noise),LPE,4,16,0.37827734375
-far-OOD (uniform noise),GPP (neg latent var),4,32,0.49649218749999996
-far-OOD (uniform noise),GPP (Episteme),4,32,0.6507906250000001
-far-OOD (uniform noise),Maha,4,32,0.22392343750000002
-far-OOD (uniform noise),MSP,4,32,0.7003703125
-far-OOD (uniform noise),LPE,4,32,0.75109375
-far-OOD (uniform noise),GPP (neg latent var),4,64,0.49403984375
-far-OOD (uniform noise),GPP (Episteme),4,64,0.43796875
-far-OOD (uniform noise),Maha,4,64,0.160896875
-far-OOD (uniform noise),MSP,4,64,0.5037203124999999
-far-OOD (uniform noise),LPE,4,64,0.16727031250000002
-far-OOD (uniform noise),GPP (neg latent var),4,128,0.4913640625
-far-OOD (uniform noise),GPP (Episteme),4,128,0.5663499999999999
-far-OOD (uniform noise),Maha,4,128,0.08629062500000001
-far-OOD (uniform noise),MSP,4,128,0.6761453125
-far-OOD (uniform noise),LPE,4,128,0.6647031250000001
+near-OOD (held-out shape 3),Maha,4,128,0.9023898437500001
+near-OOD (held-out shape 3),MSP,4,128,0.30721875
+near-OOD (held-out shape 3),LPE,4,128,0.687975
+far-OOD (uniform noise),GPP (neg latent var),0,8,0.28262265625000005
+far-OOD (uniform noise),GPP (Episteme),0,8,0.23755625
+far-OOD (uniform noise),Maha,0,8,0.23794687499999997
+far-OOD (uniform noise),MSP,0,8,0.6434359375
+far-OOD (uniform noise),LPE,0,8,0.32514375
+far-OOD (uniform noise),GPP (neg latent var),0,16,0.3924421875
+far-OOD (uniform noise),GPP (Episteme),0,16,0.69566875
+far-OOD (uniform noise),Maha,0,16,0.1161984375
+far-OOD (uniform noise),MSP,0,16,0.8906937500000001
+far-OOD (uniform noise),LPE,0,16,0.16133593750000003
+far-OOD (uniform noise),GPP (neg latent var),0,32,0.6030515625
+far-OOD (uniform noise),GPP (Episteme),0,32,0.6458578125
+far-OOD (uniform noise),Maha,0,32,0.359228125
+far-OOD (uniform noise),MSP,0,32,0.732496875
+far-OOD (uniform noise),LPE,0,32,0.15937656249999999
+far-OOD (uniform noise),GPP (neg latent var),0,64,0.6219515625
+far-OOD (uniform noise),GPP (Episteme),0,64,0.5324859375
+far-OOD (uniform noise),Maha,0,64,0.133415625
+far-OOD (uniform noise),MSP,0,64,0.31551406249999997
+far-OOD (uniform noise),LPE,0,64,0.1531078125
+far-OOD (uniform noise),GPP (neg latent var),0,128,0.4330015625
+far-OOD (uniform noise),GPP (Episteme),0,128,0.5648015625
+far-OOD (uniform noise),Maha,0,128,0.12851406249999997
+far-OOD (uniform noise),MSP,0,128,0.32761250000000003
+far-OOD (uniform noise),LPE,0,128,0.21364999999999998
+far-OOD (uniform noise),GPP (neg latent var),1,8,0.43304999999999993
+far-OOD (uniform noise),GPP (Episteme),1,8,0.8386937500000001
+far-OOD (uniform noise),Maha,1,8,0.2953546875
+far-OOD (uniform noise),MSP,1,8,0.8566265625
+far-OOD (uniform noise),LPE,1,8,0.7344859375
+far-OOD (uniform noise),GPP (neg latent var),1,16,0.448559375
+far-OOD (uniform noise),GPP (Episteme),1,16,0.26995156249999996
+far-OOD (uniform noise),Maha,1,16,0.2916734375
+far-OOD (uniform noise),MSP,1,16,0.5088765625
+far-OOD (uniform noise),LPE,1,16,0.35068593750000004
+far-OOD (uniform noise),GPP (neg latent var),1,32,0.46261718749999997
+far-OOD (uniform noise),GPP (Episteme),1,32,0.7243140625
+far-OOD (uniform noise),Maha,1,32,0.3256375
+far-OOD (uniform noise),MSP,1,32,0.8696453125
+far-OOD (uniform noise),LPE,1,32,0.275409375
+far-OOD (uniform noise),GPP (neg latent var),1,64,0.4627578125
+far-OOD (uniform noise),GPP (Episteme),1,64,0.6921343749999999
+far-OOD (uniform noise),Maha,1,64,0.18710468749999998
+far-OOD (uniform noise),MSP,1,64,0.8302484375000001
+far-OOD (uniform noise),LPE,1,64,0.264021875
+far-OOD (uniform noise),GPP (neg latent var),1,128,0.42622812499999996
+far-OOD (uniform noise),GPP (Episteme),1,128,0.4589859375
+far-OOD (uniform noise),Maha,1,128,0.026451562499999998
+far-OOD (uniform noise),MSP,1,128,0.52344375
+far-OOD (uniform noise),LPE,1,128,0.2288859375
+far-OOD (uniform noise),GPP (neg latent var),2,8,0.46011093750000004
+far-OOD (uniform noise),GPP (Episteme),2,8,0.8194359375
+far-OOD (uniform noise),Maha,2,8,0.298203125
+far-OOD (uniform noise),MSP,2,8,0.7829734375
+far-OOD (uniform noise),LPE,2,8,0.3892734375
+far-OOD (uniform noise),GPP (neg latent var),2,16,0.610903125
+far-OOD (uniform noise),GPP (Episteme),2,16,0.49186250000000004
+far-OOD (uniform noise),Maha,2,16,0.7675546874999999
+far-OOD (uniform noise),MSP,2,16,0.8138640624999999
+far-OOD (uniform noise),LPE,2,16,0.1364078125
+far-OOD (uniform noise),GPP (neg latent var),2,32,0.6798445312499999
+far-OOD (uniform noise),GPP (Episteme),2,32,0.30015000000000003
+far-OOD (uniform noise),Maha,2,32,0.5842953125000001
+far-OOD (uniform noise),MSP,2,32,0.48343593749999997
+far-OOD (uniform noise),LPE,2,32,0.2406703125
+far-OOD (uniform noise),GPP (neg latent var),2,64,0.667075
+far-OOD (uniform noise),GPP (Episteme),2,64,0.67963125
+far-OOD (uniform noise),Maha,2,64,0.08028906249999998
+far-OOD (uniform noise),MSP,2,64,0.32778437500000007
+far-OOD (uniform noise),LPE,2,64,0.1628125
+far-OOD (uniform noise),GPP (neg latent var),2,128,0.5400640624999999
+far-OOD (uniform noise),GPP (Episteme),2,128,0.7203609375000001
+far-OOD (uniform noise),Maha,2,128,0.09611874999999999
+far-OOD (uniform noise),MSP,2,128,0.8040765625
+far-OOD (uniform noise),LPE,2,128,0.5435359375
+far-OOD (uniform noise),GPP (neg latent var),3,8,0.482203125
+far-OOD (uniform noise),GPP (Episteme),3,8,0.7433515625
+far-OOD (uniform noise),Maha,3,8,0.35018281250000005
+far-OOD (uniform noise),MSP,3,8,0.4444437499999999
+far-OOD (uniform noise),LPE,3,8,0.1384890625
+far-OOD (uniform noise),GPP (neg latent var),3,16,0.555815625
+far-OOD (uniform noise),GPP (Episteme),3,16,0.385565625
+far-OOD (uniform noise),Maha,3,16,0.3067390625
+far-OOD (uniform noise),MSP,3,16,0.3074234375
+far-OOD (uniform noise),LPE,3,16,0.052565625000000005
+far-OOD (uniform noise),GPP (neg latent var),3,32,0.5437484375
+far-OOD (uniform noise),GPP (Episteme),3,32,0.54173671875
+far-OOD (uniform noise),Maha,3,32,0.246628125
+far-OOD (uniform noise),MSP,3,32,0.2345265625
+far-OOD (uniform noise),LPE,3,32,0.09381250000000001
+far-OOD (uniform noise),GPP (neg latent var),3,64,0.6334421875
+far-OOD (uniform noise),GPP (Episteme),3,64,0.49069375000000004
+far-OOD (uniform noise),Maha,3,64,0.2470921875
+far-OOD (uniform noise),MSP,3,64,0.5270984375000001
+far-OOD (uniform noise),LPE,3,64,0.36789531250000007
+far-OOD (uniform noise),GPP (neg latent var),3,128,0.49772343750000003
+far-OOD (uniform noise),GPP (Episteme),3,128,0.6788953125
+far-OOD (uniform noise),Maha,3,128,0.09779531249999998
+far-OOD (uniform noise),MSP,3,128,0.5236171875
+far-OOD (uniform noise),LPE,3,128,0.31171249999999995
+far-OOD (uniform noise),GPP (neg latent var),4,8,0.1598953125
+far-OOD (uniform noise),GPP (Episteme),4,8,0.30598593749999997
+far-OOD (uniform noise),Maha,4,8,0.38260625000000004
+far-OOD (uniform noise),MSP,4,8,0.7840218749999999
+far-OOD (uniform noise),LPE,4,8,0.47081875
+far-OOD (uniform noise),GPP (neg latent var),4,16,0.2285484375
+far-OOD (uniform noise),GPP (Episteme),4,16,0.436734375
+far-OOD (uniform noise),Maha,4,16,0.584234375
+far-OOD (uniform noise),MSP,4,16,0.6394046875000001
+far-OOD (uniform noise),LPE,4,16,0.132646875
+far-OOD (uniform noise),GPP (neg latent var),4,32,0.38574218749999994
+far-OOD (uniform noise),GPP (Episteme),4,32,0.6927640625
+far-OOD (uniform noise),Maha,4,32,0.40782031249999995
+far-OOD (uniform noise),MSP,4,32,0.6844234375
+far-OOD (uniform noise),LPE,4,32,0.24935625
+far-OOD (uniform noise),GPP (neg latent var),4,64,0.49639765625
+far-OOD (uniform noise),GPP (Episteme),4,64,0.44841796875
+far-OOD (uniform noise),Maha,4,64,0.10687031250000001
+far-OOD (uniform noise),MSP,4,64,0.768553125
+far-OOD (uniform noise),LPE,4,64,0.6504171875
+far-OOD (uniform noise),GPP (neg latent var),4,128,0.42144375
+far-OOD (uniform noise),GPP (Episteme),4,128,0.63354375
+far-OOD (uniform noise),Maha,4,128,0.10785781250000001
+far-OOD (uniform noise),MSP,4,128,0.6137328125
+far-OOD (uniform noise),LPE,4,128,0.34150625
