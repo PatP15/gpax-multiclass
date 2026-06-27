@@ -28,29 +28,44 @@ PCA_DIM = 64
 
 
 # ---- dataset dispatch: -> (records, K, has_split) with uniform text strings ----
-def _nli_text(t):
+# Two encodings: raw (just the text) and prompted (a task instruction so the
+# last-token embedding captures the model's task-relevant judgment, like AnnoMI).
+def _nli_text(t, prompt):
+    if prompt:
+        return (f"Does the premise entail the hypothesis, contradict it, or neither?\n"
+                f"Premise: {t['premise']}\nHypothesis: {t['hypothesis']}\nAnswer:")
     return f"Premise: {t['premise']}\nHypothesis: {t['hypothesis']}"
 
 
-def get_dataset(name, subsample=8000, seed=0):
+def _wrap(text, name, prompt):
+    if not prompt:
+        return text
+    if name == 'lewidi_md':
+        return f"Is the following social media post offensive?\nPost: {text}\nAnswer:"
+    if name == 'goemotions':
+        return f"What emotion does this comment express?\nComment: {text}\nAnswer:"
+    return text
+
+
+def get_dataset(name, subsample=8000, seed=0, prompt=False):
     """Returns dict with train/test lists of {emb_text, soft_label, hard_label, n_annot, domain}."""
     if name == 'chaosnli_snli':
         recs = dl.load_chaosnli('snli'); K = 3
         for r in recs:
-            r['emb_text'] = _nli_text(r['text']); r['domain'] = 0
+            r['emb_text'] = _nli_text(r['text'], prompt); r['domain'] = 0
         tr, te = _split(recs, seed)
     elif name == 'lewidi_md':
         K = 2
         tr = dl.load_lewidi('MD-Agreement', 'train'); te = dl.load_lewidi('MD-Agreement', 'test')
         for r in tr + te:
-            r['emb_text'] = r['text']; r['domain'] = 0   # domain id added later if exposed
+            r['emb_text'] = _wrap(r['text'], name, prompt); r['domain'] = 0
     elif name == 'goemotions':
         recs = dl.load_goemotions(min_annot=4); K = 28
         rng = np.random.RandomState(seed)
         if len(recs) > subsample:
             recs = [recs[i] for i in rng.choice(len(recs), subsample, replace=False)]
         for r in recs:
-            r['emb_text'] = r['text']; r['domain'] = 0
+            r['emb_text'] = _wrap(r['text'], name, prompt); r['domain'] = 0
         tr, te = _split(recs, seed)
     else:
         raise ValueError(name)
@@ -116,10 +131,11 @@ def main():
     ap.add_argument('--dataset', required=True, choices=['chaosnli_snli', 'lewidi_md', 'goemotions'])
     ap.add_argument('--model', required=True)
     ap.add_argument('--synth', action='store_true')
+    ap.add_argument('--prompt', action='store_true', help='wrap texts in a task instruction')
     ap.add_argument('--seed', type=int, default=0)
     args = ap.parse_args()
 
-    ds = get_dataset(args.dataset, seed=args.seed)
+    ds = get_dataset(args.dataset, seed=args.seed, prompt=args.prompt)
     tr, te, K = ds['train'], ds['test'], ds['K']
     print(f"{args.dataset} / {args.model}: train={len(tr)} test={len(te)} K={K}", flush=True)
 
@@ -150,7 +166,8 @@ def main():
 
     outdir = os.path.join(HERE, 'data', args.dataset, args.model)
     os.makedirs(outdir, exist_ok=True)
-    path = os.path.join(outdir, 'emb_synth.npz' if args.synth else 'emb.npz')
+    tag = 'emb_synth' if args.synth else ('emb_prompted' if args.prompt else 'emb')
+    path = os.path.join(outdir, f'{tag}.npz')
     np.savez(path, **out)
     print(f"saved {path}  layers={layer_idx}", flush=True)
 

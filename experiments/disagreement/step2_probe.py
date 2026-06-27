@@ -75,12 +75,36 @@ def predict(method, Xtr, ytr, Xte, K, nmc):
     raise ValueError(method)
 
 
-def corr(a, b):
+def _clean(a, b):
     a, b = np.asarray(a, float), np.asarray(b, float)
     ok = np.isfinite(a) & np.isfinite(b)
     if ok.sum() < 3 or np.std(a[ok]) < 1e-9 or np.std(b[ok]) < 1e-9:
+        return None
+    return a[ok], b[ok]
+
+
+def corr(a, b):
+    c = _clean(a, b)
+    return float('nan') if c is None else float(pearsonr(*c)[0])
+
+
+def corr_s(a, b):
+    """Spearman rank correlation — robust to range restriction / nonlinearity."""
+    c = _clean(a, b)
+    return float('nan') if c is None else float(spearmanr(*c)[0])
+
+
+def binned_mono(human, alea, nq=4):
+    """Does predicted aleatoric rise monotonically across human-disagreement
+    quartiles? Spearman of quartile index vs per-quartile mean alea (-1..1)."""
+    c = _clean(human, alea)
+    if c is None:
         return float('nan')
-    return float(pearsonr(a[ok], b[ok])[0])
+    h, a = c
+    edges = np.quantile(h, np.linspace(0, 1, nq + 1)[1:-1])
+    q = np.digitize(h, edges)
+    means = [a[q == i].mean() for i in range(nq) if np.any(q == i)]
+    return float(spearmanr(np.arange(len(means)), means)[0]) if len(means) > 2 else float('nan')
 
 
 def run(dataset, model, synth=False):
@@ -120,6 +144,10 @@ def run(dataset, model, synth=False):
                     for pname, pv in proxies.items():
                         row[f'corrAlea_{pname}'] = corr(pv, alea)      # RQ1: expect HIGH
                         row[f'corrMI_{pname}'] = corr(pv, mi)          # control: expect ~0
+                    he = proxies['entropy']                            # robust views (primary proxy)
+                    row['corrAleaS_entropy'] = corr_s(he, alea)        # Spearman
+                    row['corrMIS_entropy'] = corr_s(he, mi)
+                    row['mono_alea'] = binned_mono(he, alea)           # quartile monotonicity
                     rows.append(row)
         print(f'  layer {li} done', flush=True)
 
@@ -139,13 +167,31 @@ def run(dataset, model, synth=False):
         # pick the layer with best (lowest) soft_ce for this method
         bl = s.groupby('layer').soft_ce.mean().idxmin()
         sl = s[s.layer == bl]
-        ca = sl['corrAlea_entropy'].mean(); cm = sl['corrMI_entropy'].mean()
+        ca, cm = sl['corrAlea_entropy'].mean(), sl['corrMI_entropy'].mean()
+        cas, mono = sl['corrAleaS_entropy'].mean(), sl['mono_alea'].mean()
         summary[m] = dict(best_layer=int(bl), soft_ce=float(sl.soft_ce.mean()), tvd=float(sl.tvd.mean()),
-                          acc=float(sl.acc.mean()), corrAlea_entropy=float(ca), corrMI_entropy=float(cm))
+                          acc=float(sl.acc.mean()), corrAlea_entropy=float(ca), corrMI_entropy=float(cm),
+                          corrAleaS_entropy=float(cas), mono_alea=float(mono))
         print(f"  {m:11s} L{bl} soft_ce={sl.soft_ce.mean():.3f} tvd={sl.tvd.mean():.3f} acc={sl.acc.mean():.3f}"
-              f"  corr(human-H, Alea)={ca:+.3f}  corr(human-H, MI)={cm:+.3f}")
+              f"  Alea: r={ca:+.2f} rho={cas:+.2f} mono={mono:+.2f} | MI(ctrl): r={cm:+.2f}")
     json.dump(summary, open(os.path.join(outdir, 'probe_summary.json'), 'w'), indent=2)
-    print(f"\nsaved {outdir}/probe_raw.csv + probe_summary.json")
+
+    # per-item arrays at the headline config (best layer per method, largest n, seed 0)
+    # for the aleatoric-vs-human-disagreement scatter figure (step3).
+    he_all = sm.entropy(soft_te); per = {'human_entropy': he_all}
+    nmax = df.n_obs.max()
+    for m in METHODS:
+        if m not in summary: continue
+        bl = summary[m]['best_layer']
+        rng = np.random.RandomState(100)
+        io = rng.choice(len(d[f'X_train_L{bl}']), min(nmax, len(d[f'X_train_L{bl}'])), replace=False)
+        try:
+            P, alea, mi = predict(m, d[f'X_train_L{bl}'][io], d['hard_train'][io], d[f'X_test_L{bl}'], K, nmc)
+            per[f'alea_{m}'] = alea; per[f'mi_{m}'] = mi
+        except Exception as e:
+            print('per-item headline skipped for', m, repr(e)[:60])
+    np.savez(os.path.join(outdir, 'per_item.npz'), **per)
+    print(f"saved {outdir}/probe_raw.csv + probe_summary.json + per_item.npz")
     return df
 
 
