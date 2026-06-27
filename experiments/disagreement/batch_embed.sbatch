@@ -24,6 +24,7 @@ conda activate gpax-multiclass
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 python -c "import numpy, torch" || { echo "FATAL: conda env not active (no numpy/torch)"; exit 1; }
 export PYTHONPATH=$(pwd)
-echo "=== $(date) dataset=$DS model=$MODEL python=$(which python) ==="
-ANNOMI_MODEL_TYPE=$MODEL python experiments/disagreement/step1_embed.py --dataset "$DS" --model "$MODEL"
+PROMPT_FLAG=""; [ -n "$PROMPT" ] && PROMPT_FLAG="--prompt"
+echo "=== $(date) dataset=$DS model=$MODEL prompt=${PROMPT:-0} python=$(which python) ==="
+ANNOMI_MODEL_TYPE=$MODEL python experiments/disagreement/step1_embed.py --dataset "$DS" --model "$MODEL" $PROMPT_FLAG
 echo "=== done $(date) ==="
