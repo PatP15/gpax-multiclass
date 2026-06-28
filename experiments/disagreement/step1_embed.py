@@ -93,8 +93,8 @@ def embed_synth(texts, hard, K, n_layers=N_LAYERS_SAMPLED, seed=0):
     return out, list(range(n_layers))
 
 
-def embed_llm(texts, model_type, n_layers=N_LAYERS_SAMPLED, batch_size=8, max_length=256):
-    """Real extraction: last-token pooling at ~n_layers evenly-spaced layers."""
+def embed_llm(texts, model_type, n_layers=N_LAYERS_SAMPLED, batch_size=8, max_length=256, pool='last'):
+    """Real extraction: last-token or masked-mean pooling at ~n_layers layers."""
     import torch
     sys.path.insert(0, os.path.join(REPO, 'experiments', 'annomi'))
     os.environ.setdefault('ANNOMI_MODEL_TYPE', model_type)
@@ -116,8 +116,12 @@ def embed_llm(texts, model_type, n_layers=N_LAYERS_SAMPLED, batch_size=8, max_le
             hs = model(**inp, output_hidden_states=True).hidden_states
         last = inp.attention_mask.sum(1) - 1
         ar = torch.arange(len(batch))
+        mask = inp.attention_mask.unsqueeze(-1).float()   # (B,T,1) for mean pooling
         for li in layer_idx:
-            pooled = hs[li][ar, last].float().cpu().numpy()
+            if pool == 'mean':
+                pooled = ((hs[li] * mask).sum(1) / mask.sum(1).clamp(min=1)).float().cpu().numpy()
+            else:
+                pooled = hs[li][ar, last].float().cpu().numpy()
             by_layer[li].append(pooled)
         if (i // batch_size) % 20 == 0:
             print(f'  embedded {i+len(batch)}/{len(texts)}', flush=True)
@@ -132,6 +136,8 @@ def main():
     ap.add_argument('--model', required=True)
     ap.add_argument('--synth', action='store_true')
     ap.add_argument('--prompt', action='store_true', help='wrap texts in a task instruction')
+    ap.add_argument('--pool', choices=['last', 'mean'], default='last')
+    ap.add_argument('--pca-dim', type=int, default=PCA_DIM, dest='pca_dim')
     ap.add_argument('--seed', type=int, default=0)
     args = ap.parse_args()
 
@@ -151,14 +157,14 @@ def main():
         raw_te, _ = embed_synth(te_txt, hard_te, K, seed=args.seed + 1)
     else:
         all_txt = tr_txt + te_txt
-        raw_all, layer_idx = embed_llm(all_txt, args.model)
+        raw_all, layer_idx = embed_llm(all_txt, args.model, pool=args.pool)
         raw_tr = {li: raw_all[li][:len(tr_txt)] for li in layer_idx}
         raw_te = {li: raw_all[li][len(tr_txt):] for li in layer_idx}
 
     out = {'K': K, 'layers': np.array(layer_idx), 'hard_train': hard_tr, 'hard_test': hard_te,
            'soft_test': soft_te, 'n_annot_test': nann_te, 'domain_train': dom_tr, 'domain_test': dom_te}
     for li in layer_idx:
-        pca = PCA(n_components=min(PCA_DIM, raw_tr[li].shape[1]))
+        pca = PCA(n_components=min(args.pca_dim, raw_tr[li].shape[1], len(raw_tr[li])))
         Xtr = pca.fit_transform(np.nan_to_num(raw_tr[li]))
         Xte = pca.transform(np.nan_to_num(raw_te[li]))
         out[f'X_train_L{li}'] = Xtr.astype(np.float32)
@@ -166,7 +172,14 @@ def main():
 
     outdir = os.path.join(HERE, 'data', args.dataset, args.model)
     os.makedirs(outdir, exist_ok=True)
-    tag = 'emb_synth' if args.synth else ('emb_prompted' if args.prompt else 'emb')
+    if args.synth:
+        tag = 'emb_synth'
+    elif args.prompt:
+        tag = 'emb_prompted'
+    elif args.pool != 'last' or args.pca_dim != PCA_DIM:
+        tag = f'emb_{args.pool}{args.pca_dim}'
+    else:
+        tag = 'emb'
     path = os.path.join(outdir, f'{tag}.npz')
     np.savez(path, **out)
     print(f"saved {path}  layers={layer_idx}", flush=True)

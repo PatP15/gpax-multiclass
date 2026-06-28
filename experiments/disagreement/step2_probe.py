@@ -107,8 +107,15 @@ def binned_mono(human, alea, nq=4):
     return float(spearmanr(np.arange(len(means)), means)[0]) if len(means) > 2 else float('nan')
 
 
-def run(dataset, model, synth=False):
-    fn = 'emb_synth.npz' if synth else 'emb.npz'
+def run(dataset, model, synth=False, prompt=False, variant=None):
+    if variant:
+        fn, suffix = f'emb_{variant}.npz', f'_{variant}'
+    elif synth:
+        fn, suffix = 'emb_synth.npz', '_synth'
+    elif prompt:
+        fn, suffix = 'emb_prompted.npz', '_prompted'
+    else:
+        fn, suffix = 'emb.npz', ''
     d = np.load(os.path.join(HERE, 'data', dataset, model, fn))
     K = int(d['K']); layers = list(d['layers']); soft_te = d['soft_test']; hard_te = d['hard_test']
     nmc = _nmc(K)
@@ -153,7 +160,7 @@ def run(dataset, model, synth=False):
 
     import pandas as pd
     df = pd.DataFrame(rows)
-    outdir = os.path.join(REPO, 'experiments', 'disagreement', 'figures', dataset, model)
+    outdir = os.path.join(REPO, 'experiments', 'disagreement', 'figures', dataset, model + suffix)
     os.makedirs(outdir, exist_ok=True)
     df.to_csv(os.path.join(outdir, 'probe_raw.csv'), index=False)
 
@@ -198,6 +205,6 @@ def run(dataset, model, synth=False):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--dataset', required=True); ap.add_argument('--model', required=True)
-    ap.add_argument('--synth', action='store_true')
+    ap.add_argument('--synth', action='store_true'); ap.add_argument('--prompt', action='store_true'); ap.add_argument('--variant', default=None)
     a = ap.parse_args()
-    run(a.dataset, a.model, a.synth)
+    run(a.dataset, a.model, a.synth, a.prompt, a.variant)
