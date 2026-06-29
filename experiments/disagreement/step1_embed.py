@@ -37,11 +37,27 @@ def _nli_text(t, prompt):
     return f"Premise: {t['premise']}\nHypothesis: {t['hypothesis']}"
 
 
+LEWIDI = {'lewidi_md': 'MD-Agreement', 'lewidi_hsbrexit': 'HS-Brexit',
+          'lewidi_armis': 'ArMIS', 'lewidi_convabuse': 'ConvAbuse'}
+
+
+def _flatten_text(t):
+    """LeWiDi ConvAbuse stores a JSON dialogue dict; flatten to a readable string."""
+    if isinstance(t, str) and t.strip().startswith('{'):
+        try:
+            import json
+            d = json.loads(t)
+            return ' '.join(str(v) for v in d.values() if v)
+        except Exception:
+            return t
+    return str(t)
+
+
 def _wrap(text, name, prompt):
     if not prompt:
         return text
-    if name == 'lewidi_md':
-        return f"Is the following social media post offensive?\nPost: {text}\nAnswer:"
+    if name in LEWIDI:
+        return f"Is the following text offensive/abusive?\nText: {text}\nAnswer:"
     if name == 'goemotions':
         return f"What emotion does this comment express?\nComment: {text}\nAnswer:"
     return text
@@ -54,11 +70,11 @@ def get_dataset(name, subsample=8000, seed=0, prompt=False):
         for r in recs:
             r['emb_text'] = _nli_text(r['text'], prompt); r['domain'] = 0
         tr, te = _split(recs, seed)
-    elif name == 'lewidi_md':
-        K = 2
-        tr = dl.load_lewidi('MD-Agreement', 'train'); te = dl.load_lewidi('MD-Agreement', 'test')
+    elif name in LEWIDI:
+        K = 2; task = LEWIDI[name]
+        tr = dl.load_lewidi(task, 'train'); te = dl.load_lewidi(task, 'test')
         for r in tr + te:
-            r['emb_text'] = _wrap(r['text'], name, prompt); r['domain'] = 0
+            r['emb_text'] = _wrap(_flatten_text(r['text']), name, prompt); r['domain'] = 0
     elif name == 'goemotions':
         recs = dl.load_goemotions(min_annot=4); K = 28
         rng = np.random.RandomState(seed)
@@ -132,7 +148,7 @@ def embed_llm(texts, model_type, n_layers=N_LAYERS_SAMPLED, batch_size=8, max_le
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', required=True, choices=['chaosnli_snli', 'lewidi_md', 'goemotions'])
+    ap.add_argument('--dataset', required=True, choices=['chaosnli_snli', 'lewidi_md', 'lewidi_hsbrexit', 'lewidi_armis', 'lewidi_convabuse', 'goemotions'])
     ap.add_argument('--model', required=True)
     ap.add_argument('--synth', action='store_true')
     ap.add_argument('--prompt', action='store_true', help='wrap texts in a task instruction')
