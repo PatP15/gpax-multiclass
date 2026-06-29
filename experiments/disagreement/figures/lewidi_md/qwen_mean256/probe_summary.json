@@ -1,0 +1,55 @@
+{
+  "dataset": "lewidi_md",
+  "model": "qwen",
+  "K": 2,
+  "GPP-cosine": {
+    "best_layer": 0,
+    "soft_ce": 0.6100170245784974,
+    "tvd": 0.2642760868887711,
+    "acc": 0.6956493294079162,
+    "corrAlea_entropy": 0.21474470245655247,
+    "corrMI_entropy": -0.11444650293135114,
+    "corrAleaS_entropy": 0.17880398181472734,
+    "mono_alea": 0.9
+  },
+  "GPP-rbf": {
+    "best_layer": 29,
+    "soft_ce": 0.6059054485087444,
+    "tvd": 0.22378425026710005,
+    "acc": 0.7540726202158979,
+    "corrAlea_entropy": 0.2966348244426903,
+    "corrMI_entropy": 0.06144454442749425,
+    "corrAleaS_entropy": 0.2894355522796125,
+    "mono_alea": 1.0
+  },
+  "GPP-laplace": {
+    "best_layer": 38,
+    "soft_ce": 0.633723471094551,
+    "tvd": 0.2766041616942413,
+    "acc": 0.6710500490677135,
+    "corrAlea_entropy": 0.08184610849574349,
+    "corrMI_entropy": 0.04324857284902821,
+    "corrAleaS_entropy": 0.06603682020513041,
+    "mono_alea": 0.9
+  },
+  "LPE": {
+    "best_layer": 29,
+    "soft_ce": 0.7200891868184653,
+    "tvd": 0.23333394891629178,
+    "acc": 0.7417075564278705,
+    "corrAlea_entropy": 0.27429689516727007,
+    "corrMI_entropy": 0.2007520993648538,
+    "corrAleaS_entropy": 0.27648535564777726,
+    "mono_alea": 1.0
+  },
+  "LP-temp": {
+    "best_layer": 19,
+    "soft_ce": 0.5910385485750169,
+    "tvd": 0.24913848979169514,
+    "acc": 0.7339875695125941,
+    "corrAlea_entropy": 0.26518627977773146,
+    "corrMI_entropy": NaN,
+    "corrAleaS_entropy": 0.2639660894042614,
+    "mono_alea": 1.0
+  }
+}

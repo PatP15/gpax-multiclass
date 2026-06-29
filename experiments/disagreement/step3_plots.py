@@ -84,28 +84,40 @@ def per_model(dataset, model):
     print('saved', out)
 
 
-def aggregate():
+def aggregate(variant=None):
+    """Cross dataset/model headline table. `variant` (e.g. 'mean256') filters to
+    figures/<ds>/<model>_<variant>/ dirs; None includes everything. The probe_summary
+    JSON only stores the bare model name, so the run variant is recovered from the
+    directory basename (model + optional _suffix) and reported as its own column."""
     rows = []
     for sj in glob.glob(os.path.join(FIGROOT, '*', '*', 'probe_summary.json')):
         s = json.load(open(sj))
+        dirname = os.path.basename(os.path.dirname(sj))          # e.g. gemma_mean256
+        var = dirname[len(s['model']):].lstrip('_') or 'last64'  # '' -> plain last-token/64
+        if variant is not None and var != variant:
+            continue
         for m in METHODS:
             if m in s:
-                rows.append(dict(dataset=s['dataset'], model=s['model'], K=s['K'], method=m, **s[m]))
+                rows.append(dict(dataset=s['dataset'], model=s['model'], variant=var,
+                                 K=s['K'], method=m, **s[m]))
     if not rows:
         print('no probe_summary.json found yet'); return
-    df = pd.DataFrame(rows)
-    print('\n=== cross dataset/model headline (best layer, largest n) ===')
-    cols = ['dataset', 'model', 'K', 'method', 'soft_ce', 'tvd', 'acc', 'corrAleaS_entropy', 'mono_alea', 'corrMI_entropy']
+    df = pd.DataFrame(rows).sort_values(['variant', 'K', 'dataset', 'model', 'method'])
+    print(f'\n=== cross dataset/model headline (best layer, largest n)'
+          f"{' — variant=' + variant if variant else ''} ===")
+    cols = ['dataset', 'model', 'variant', 'K', 'method', 'soft_ce', 'tvd', 'acc',
+            'corrAleaS_entropy', 'mono_alea', 'corrMI_entropy']
     print(df[cols].to_string(index=False))
-    df.to_csv(os.path.join(FIGROOT, 'aggregate_summary.csv'), index=False)
-    print('\nsaved', os.path.join(FIGROOT, 'aggregate_summary.csv'))
+    out = os.path.join(FIGROOT, 'aggregate_summary.csv')
+    df.to_csv(out, index=False)
+    print('\nsaved', out)
 
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset'); ap.add_argument('--model')
+    ap.add_argument('--dataset'); ap.add_argument('--model'); ap.add_argument('--variant')
     a = ap.parse_args()
     if a.dataset and a.model:
         per_model(a.dataset, a.model)
     else:
-        aggregate()
+        aggregate(a.variant)
