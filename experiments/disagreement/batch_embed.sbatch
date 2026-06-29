@@ -27,7 +27,7 @@ export PYTHONPATH=$(pwd)
 PROMPT_FLAG=""; [ -n "$PROMPT" ] && PROMPT_FLAG="--prompt"
 POOL=${POOL:-last}; PCADIM=${PCADIM:-64}
 echo "=== $(date) dataset=$DS model=$MODEL prompt=${PROMPT:-0} python=$(which python) ==="
-for DSx in $(echo "$DS" | tr "," " "); do
+for DSx in $(echo "$DS" | tr ":" " "); do
   echo "--- extracting $DSx ($(date)) ---"
   ANNOMI_MODEL_TYPE=$MODEL python experiments/disagreement/step1_embed.py --dataset "$DSx" --model "$MODEL" $PROMPT_FLAG --pool "$POOL" --pca-dim "$PCADIM"
 done
