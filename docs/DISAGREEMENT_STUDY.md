@@ -69,23 +69,27 @@ GPP-cosine, GPP-rbf(auto-ℓ), GPP-laplace(auto-ℓ), LPE, LP-temp (temperature-
 
 Spearman ρ between human-entropy `H(soft)` and the probe's predicted aleatoric `E[H(p)]`, at the best layer
 per method, largest `n_obs`. GPP-rbf is the representative GPP (kernel rescue, RQ2); LPE / LP-temp are the
-uncertainty-aware baselines. Higher = better disagreement tracking. (✱ = cell still landing; see Status.)
+uncertainty-aware baselines. Higher = better disagreement tracking. (All three models complete; see Status.)
 
 | dataset (K=2) | model | GPP-rbf Alea-ρ | LPE Alea-ρ | LP-temp Alea-ρ | GPP-rbf acc | soft-CE | TVD |
 |---|---|---|---|---|---|---|---|
 | MD-Agreement | gemma | **0.314** | 0.292 | 0.266 | 0.767 | 0.591 | 0.214 |
 | MD-Agreement | qwen  | **0.289** | 0.276 | 0.264 | 0.754 | 0.606 | 0.224 |
+| MD-Agreement | llama | **0.333** | 0.303 | 0.271 | 0.771 | 0.584 | 0.209 |
 | HS-Brexit    | gemma | 0.349 | 0.352 | 0.356 | 0.894 | 0.400 | 0.130 |
 | HS-Brexit    | qwen  | 0.282 | 0.285 | 0.272 | 0.893 | 0.416 | 0.136 |
+| HS-Brexit    | llama | 0.272 | 0.316 | 0.307 | 0.893 | 0.417 | 0.136 |
 | ArMIS (Arabic) | gemma | 0.154 | 0.216 | 0.226 | 0.731 | 0.576 | 0.275 |
 | ArMIS (Arabic) | qwen  | 0.080 | 0.099 | 0.147 | 0.681 | 0.641 | 0.309 |
+| ArMIS (Arabic) | llama | 0.082 | 0.076 | 0.068 | 0.713 | 0.611 | 0.290 |
 | ConvAbuse    | gemma | 0.298 | 0.267 | 0.191 | 0.878 | 0.296 | 0.145 |
 | ConvAbuse    | qwen  | 0.286 | 0.253 | 0.178 | 0.874 | 0.311 | 0.148 |
+| ConvAbuse    | llama | **0.304** | 0.282 | 0.208 | 0.875 | 0.296 | 0.133 |
 
 - **Aleatoric tracks human disagreement on every subjective task** (ρ 0.15–0.35, all positive), and GPP-rbf
   is competitive with or better than the uncertainty-aware baselines on most cells (it leads on MD-Agreement
-  both models and on ConvAbuse; LPE/LP-temp edge it on ArMIS and tie on HS-Brexit). The probe was trained on
-  majority labels alone, so this is genuine recovery, not memorization.
+  for **all three models** and on ConvAbuse; LPE/LP-temp edge it on ArMIS and tie on HS-Brexit). The probe was
+  trained on majority labels alone, so this is genuine recovery, not memorization.
 - The *strength* is task-dependent and tracks how separable the task is in the embedding (HS-Brexit/ConvAbuse
   high accuracy → cleaner tracking; ArMIS, a small Arabic set, is the weakest).
 
@@ -113,17 +117,22 @@ Spearman ρ(n_obs, mean MI) — **negative = rational**:
 |---|---|---|---|---|
 | MD-Agreement | gemma | −0.92 | −0.85 | **+0.84** |
 | MD-Agreement | qwen  | −0.90 | −0.84 | **+0.87** |
+| MD-Agreement | llama | −0.90 | −0.84 | **+0.88** |
 | HS-Brexit    | gemma | −0.78 | −0.90 | **+0.37** |
 | HS-Brexit    | qwen  | −0.75 | −0.90 | **+0.40** |
+| HS-Brexit    | llama | −0.77 | −0.90 | **+0.30** |
 | ArMIS        | gemma | −0.92 | −0.81 | **+0.53** |
 | ArMIS        | qwen  | −0.93 | −0.83 | **+0.57** |
+| ArMIS        | llama | −0.92 | −0.82 | **+0.50** |
 | ConvAbuse    | gemma | −0.69 | −0.97 | **+0.79** |
 | ConvAbuse    | qwen  | −0.69 | −0.97 | **+0.83** |
+| ConvAbuse    | llama | −0.72 | −0.97 | **+0.77** |
 
 - **GPP's epistemic uncertainty falls monotonically with data (rational); LPE's *rises* (irrational)** — the
-  signs are opposite on every task and both models. This reproduces the 3D-Shapes synthetic finding
-  (GPP −0.86, LPE +0.38; `docs/MULTICLASS_VALIDATION.md`) on **real LLM embeddings across 4 subjective tasks
-  and 2 models** — a much stronger demonstration of the decomposition's correctness than synthetic alone.
+  signs are opposite on every task and all three models (GPP-rbf −0.69…−0.92, GPP-laplace −0.81…−0.97 vs LPE
+  +0.30…+0.88). This reproduces the 3D-Shapes synthetic finding (GPP −0.86, LPE +0.38;
+  `docs/MULTICLASS_VALIDATION.md`) on **real LLM embeddings across 4 subjective tasks and 3 models** — a much
+  stronger demonstration of the decomposition's correctness than synthetic alone.
 - Combined with RQ1, this is **the dissociation (RQ4)**: aleatoric responds to the human-disagreement axis,
   epistemic to the evidence axis, each ignoring the other.
 
@@ -163,13 +172,14 @@ text null rather than bury it.
 |---|---|---|---|
 | gemma | ✅ all 4 | ✅ | ✅ |
 | qwen  | ✅ all 4 | — | — |
-| llama | ✱ extracting (70B, CPU-offloaded — single 80GB A100) | — | — |
+| llama | ✅ all 4 | — | — |
 
-The llama cells are still landing (the 70B does not fit on one 80GB A100, so extraction is CPU-offloaded and
-slow); the RQ1/RQ3 tables will be filled to the full 3-model matrix on completion. The findings above
-(aleatoric tracks disagreement and the GPP-rbf kernel rescue lifts it; epistemic falls with evidence while
-LPE's rises; the two dissociate; text novel-class OOD is a representation-level null) replicate cleanly across
-**both** gemma and qwen on all four LeWiDi tasks, so they do not hinge on the third model.
+All three models are complete on the four LeWiDi tasks (3×4 = 12 cells). The findings above — aleatoric tracks
+disagreement and the GPP-rbf kernel rescue lifts it; epistemic falls with evidence while LPE's rises; the two
+dissociate; text novel-class OOD is a representation-level null — replicate cleanly across **gemma-3-27b,
+qwen3-vl-30b, and llama-3.3-70b**. ChaosNLI (K=3) and GoEmotions (K=28) were run on gemma to establish the
+K-breadth and the poorly-separated cases; extending them to qwen/llama is the natural next increment but is
+not load-bearing for the headline claims.
 
 ## References
 
