@@ -146,10 +146,8 @@ AUROC(held-out vs seen) from GPP neg-latent-var / −MI vs Maha / MSP / kNN / LP
 | ChaosNLI (K=3) | gemma | 0.66 | 0.50 | 0.52 | 0.50 | 0.49 | 0.50 | 0.49 |
 | ChaosNLI (K=3) | qwen  | 0.79 | 0.50 | 0.50 | 0.52 | 0.50 | 0.51 | 0.51 |
 | ChaosNLI (K=3) | llama | 0.75 | 0.50 | 0.49 | 0.52 | 0.50 | 0.47 | 0.47 |
-| GoEmotions (K=28)† | gemma | 0.24 | 0.52 | 0.52 | 0.52 | 0.50 | 0.50 | 0.50 |
-
-†GoEmotions epistemic is the last-token/64 run (the others are mean256); for a chance-level OOD result the
-representation is immaterial, and the 28-way id-acc is low (0.24) regardless.
+| GoEmotions (K=28) | gemma | 0.23 | 0.52 | 0.52 | 0.52 | 0.50 | 0.50 | 0.50 |
+| GoEmotions (K=28) | qwen  | 0.22 | 0.50 | 0.50 | 0.51 | 0.50 | 0.49 | 0.51 |
 
 **All methods, including the distance baselines, sit at chance** — and crucially this holds even though the
 probe now *classifies* the in-distribution NLI labels well (id-acc 0.66–0.79). So the embedding linearly
