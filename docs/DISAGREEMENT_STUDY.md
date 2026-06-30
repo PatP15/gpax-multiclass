@@ -141,28 +141,46 @@ Spearman ρ(n_obs, mean MI) — **negative = rational**:
 The symmetric epistemic-OOD test (`step2_epistemic.py`): train on K−1 classes, hold one out, score
 AUROC(held-out vs seen) from GPP neg-latent-var / −MI vs Maha / MSP / kNN / LPE.
 
-| dataset | model | GPP neg-var | GPP −MI | Maha | kNN | MSP | LPE |
-|---|---|---|---|---|---|---|---|
-| ChaosNLI (K=3) | gemma | 0.51 | 0.51 | 0.51 | 0.51 | 0.49 | 0.51 |
-| GoEmotions (K=28) | gemma | 0.52 | 0.52 | 0.52 | 0.50 | 0.50 | 0.50 |
+| dataset | model | id-acc | GPP neg-var | GPP −MI | Maha | kNN | MSP | LPE |
+|---|---|---|---|---|---|---|---|---|
+| ChaosNLI (K=3) | gemma | 0.66 | 0.50 | 0.52 | 0.50 | 0.49 | 0.50 | 0.49 |
+| ChaosNLI (K=3) | qwen  | 0.79 | 0.50 | 0.50 | 0.52 | 0.50 | 0.51 | 0.51 |
+| ChaosNLI (K=3) | llama | 0.75 | 0.50 | 0.49 | 0.52 | 0.50 | 0.47 | 0.47 |
+| GoEmotions (K=28)† | gemma | 0.24 | 0.52 | 0.52 | 0.52 | 0.50 | 0.50 | 0.50 |
 
-**All methods, including the distance baselines, sit at chance.** The held-out NLI/emotion class is simply
-not a *spatially separated* region in these LLM embeddings — there is no OOD signal for *any* detector to
-find, so this is a property of the representation, not a GPP failure. The epistemic-OOD claim is therefore
-carried by (a) the scarcity axis above (real data, decisive) and (b) the synthetic **near-OOD** result where
-classes *are* separable (3D-Shapes held-out shape: GPP 0.83, `docs/MULTICLASS_VALIDATION.md`). We report the
-text null rather than bury it.
+†GoEmotions epistemic is the last-token/64 run (the others are mean256); for a chance-level OOD result the
+representation is immaterial, and the 28-way id-acc is low (0.24) regardless.
+
+**All methods, including the distance baselines, sit at chance** — and crucially this holds even though the
+probe now *classifies* the in-distribution NLI labels well (id-acc 0.66–0.79). So the embedding linearly
+separates the seen classes yet places a held-out class in the *same region*: the held-out NLI/emotion class
+is not a *spatially distinct* cluster, so there is no OOD signal for *any* detector to find. This is a
+property of the representation, not a GPP failure — and the fact that it persists across all three models
+makes that point strongly. The epistemic-OOD claim is therefore carried by (a) the scarcity axis above (real
+data, decisive) and (b) the synthetic **near-OOD** result where classes *are* separable (3D-Shapes held-out
+shape: GPP 0.83, `docs/MULTICLASS_VALIDATION.md`). We report the text null rather than bury it.
 
 ## RQ5/RQ6 — Breadth across K and the poorly-separated cases
 
-- **K=3 (ChaosNLI):** a near-null — the embeddings barely separate SNLI labels (GPP-rbf acc ≈ 0.46, vs 0.33
-  chance), so neither distribution recovery nor aleatoric tracking gets traction (Alea-ρ ≈ 0.01). NLI
-  entailment is not linearly decodable from a last-/mean-pooled hidden state the way social-offensiveness is.
-- **K=28 (GoEmotions):** weak but non-trivial — GPP-rbf acc ≈ 0.28 (chance 0.036), Alea-ρ ≈ 0.16, and the
-  kernel rescue still helps (cosine 0.09 → rbf 0.16). The 28-way emotion task is hard for a linear-ish probe.
-- The pattern is consistent: **aleatoric tracking works where the task is decodable from the embedding**
-  (the subjective binary tasks), and degrades gracefully where it is not — it does not produce spurious
-  high correlations on the null cases.
+- **K=3 (ChaosNLI), all 3 models:** with mean-pool/256 the task *is* decodable — GPP-rbf accuracy 0.62
+  (gemma) / 0.67 (qwen) / 0.62 (llama), well above the 0.33 chance (and far above the 0.46 the old
+  last-token/64 representation gave — another representation-bottleneck lesson). Yet **aleatoric tracking
+  stays weak** (Alea-ρ ≈ 0.09–0.10 for GPP-rbf, ≈ same for LPE/LP-temp): the probe predicts NLI labels but
+  its aleatoric does not capture *which* items humans found genuinely ambiguous. A clean dissociation between
+  "decodable" and "disagreement-recoverable" — disagreement on NLI is harder to recover than on offensiveness,
+  for every probe. LP-temp again wins soft-CE (0.89–0.91 vs GPP-rbf 0.93–0.98), as on LeWiDi.
+- **K=28 (GoEmotions):** weak but non-trivial and consistent across models — GPP-rbf acc 0.28 (gemma) / 0.27
+  (qwen) [llama pending] vs 0.036 chance, Alea-ρ ≈ 0.15–0.16, and the kernel rescue still helps (cosine 0.09 →
+  rbf 0.16). The 28-way task is hard for a linear-ish probe, and the matched-conditions constraint (LP-temp
+  needs ≥2 samples/class) drops all n_obs<1024 cells, so the GoEmotions scarcity curve is not measurable here.
+- **Scarcity breadth:** the RQ3 dissociation extends to K=3 — on ChaosNLI **GPP-laplace** MI falls sharply
+  with data (ρ(n,MI) −0.93/−0.95/−0.93 for gemma/qwen/llama) while **LPE rises (+0.90/+0.90/+0.91)**; GPP-rbf
+  is the exception (nearly flat, −0.04…−0.17), so the rational-shrinkage signal is kernel-dependent on this
+  task. (K=28 not measurable, per above.)
+- The pattern is consistent: **aleatoric tracking works where the task is decodable AND disagreement is
+  embedding-visible** (the subjective binary tasks), is weak where disagreement is subtle even if the task is
+  decodable (ChaosNLI), and degrades gracefully where the task itself is hard (GoEmotions) — it does not
+  produce spurious high correlations on the harder cases.
 
 ---
 
@@ -171,15 +189,15 @@ text null rather than bury it.
 | model | LeWiDi (MD / HS-Brexit / ArMIS / ConvAbuse) | ChaosNLI | GoEmotions |
 |---|---|---|---|
 | gemma | ✅ all 4 | ✅ | ✅ |
-| qwen  | ✅ all 4 | — | — |
-| llama | ✅ all 4 | — | — |
+| qwen  | ✅ all 4 | ✅ | ✅ |
+| llama | ✅ all 4 | ✅ | ⏳ extracting |
 
-All three models are complete on the four LeWiDi tasks (3×4 = 12 cells). The findings above — aleatoric tracks
-disagreement and the GPP-rbf kernel rescue lifts it; epistemic falls with evidence while LPE's rises; the two
-dissociate; text novel-class OOD is a representation-level null — replicate cleanly across **gemma-3-27b,
-qwen3-vl-30b, and llama-3.3-70b**. ChaosNLI (K=3) and GoEmotions (K=28) were run on gemma to establish the
-K-breadth and the poorly-separated cases; extending them to qwen/llama is the natural next increment but is
-not load-bearing for the headline claims.
+The full 3-model matrix spans **K=2 (4 LeWiDi tasks), K=3 (ChaosNLI), and K=28 (GoEmotions)** — 17 of 18
+(dataset×model) cells complete; only llama×GoEmotions is still extracting (70B, CPU-offloaded). The findings
+above — aleatoric tracks disagreement and the GPP-rbf kernel rescue lifts it; epistemic falls with evidence
+while LPE's rises; the two dissociate; text novel-class OOD is a representation-level null even when the task
+is decodable — replicate cleanly across **gemma-3-27b, qwen3-vl-30b, and llama-3.3-70b**, and the K-breadth
+shows where they hold (subjective-binary tasks) versus weaken (NLI disagreement, 28-way emotion).
 
 ## References
 

@@ -1,0 +1,17 @@
+{
+  "dataset": "chaosnli_snli",
+  "model": "llama",
+  "K": 3,
+  "best_layer": 32,
+  "holdout_classes": [
+    1,
+    0,
+    2
+  ],
+  "GPP neg-latent-var": 0.502896677046031,
+  "GPP -MI": 0.4891774560744617,
+  "Maha": 0.5208588765980977,
+  "MSP": 0.46467858917066124,
+  "kNN": 0.49842637961739,
+  "LPE -var": 0.4668400328351356
+}
