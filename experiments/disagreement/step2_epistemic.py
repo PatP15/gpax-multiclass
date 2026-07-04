@@ -94,7 +94,8 @@ def run(dataset, model, variant=None):
 
     import pandas as pd
     df = pd.DataFrame(rows)
-    outdir = os.path.join(REPO, 'experiments', 'disagreement', 'figures', dataset, model)
+    outdir = os.path.join(REPO, 'experiments', 'disagreement', 'figures', dataset,
+                          model + (f'_{variant}' if variant else ''))
     os.makedirs(outdir, exist_ok=True)
     df.to_csv(os.path.join(outdir, 'epistemic_raw.csv'), index=False)
     # best layer = highest ID accuracy (the layer that actually represents the task)

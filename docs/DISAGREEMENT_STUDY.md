@@ -148,6 +148,7 @@ AUROC(held-out vs seen) from GPP neg-latent-var / −MI vs Maha / MSP / kNN / LP
 | ChaosNLI (K=3) | llama | 0.75 | 0.50 | 0.49 | 0.52 | 0.50 | 0.47 | 0.47 |
 | GoEmotions (K=28) | gemma | 0.23 | 0.52 | 0.52 | 0.52 | 0.50 | 0.50 | 0.50 |
 | GoEmotions (K=28) | qwen  | 0.22 | 0.50 | 0.50 | 0.51 | 0.50 | 0.49 | 0.51 |
+| GoEmotions (K=28) | llama | 0.25 | 0.50 | 0.50 | 0.52 | 0.50 | 0.50 | 0.50 |
 
 **All methods, including the distance baselines, sit at chance** — and crucially this holds even though the
 probe now *classifies* the in-distribution NLI labels well (id-acc 0.66–0.79). So the embedding linearly
@@ -167,10 +168,11 @@ shape: GPP 0.83, `docs/MULTICLASS_VALIDATION.md`). We report the text null rathe
   its aleatoric does not capture *which* items humans found genuinely ambiguous. A clean dissociation between
   "decodable" and "disagreement-recoverable" — disagreement on NLI is harder to recover than on offensiveness,
   for every probe. LP-temp again wins soft-CE (0.89–0.91 vs GPP-rbf 0.93–0.98), as on LeWiDi.
-- **K=28 (GoEmotions):** weak but non-trivial and consistent across models — GPP-rbf acc 0.28 (gemma) / 0.27
-  (qwen) [llama pending] vs 0.036 chance, Alea-ρ ≈ 0.15–0.16, and the kernel rescue still helps (cosine 0.09 →
-  rbf 0.16). The 28-way task is hard for a linear-ish probe, and the matched-conditions constraint (LP-temp
-  needs ≥2 samples/class) drops all n_obs<1024 cells, so the GoEmotions scarcity curve is not measurable here.
+- **K=28 (GoEmotions):** weak but non-trivial and consistent across all 3 models — GPP-rbf acc 0.28 (gemma) /
+  0.27 (qwen) / 0.28 (llama) vs 0.036 chance, Alea-ρ ≈ 0.15–0.16 everywhere, and the kernel rescue still helps
+  (cosine 0.09 → rbf 0.16). The 28-way task is hard for a linear-ish probe, and the matched-conditions
+  constraint (LP-temp needs ≥2 samples/class) drops all n_obs<1024 cells, so the GoEmotions scarcity curve is
+  not measurable here.
 - **Scarcity breadth:** the RQ3 dissociation extends to K=3 — on ChaosNLI **GPP-laplace** MI falls sharply
   with data (ρ(n,MI) −0.93/−0.95/−0.93 for gemma/qwen/llama) while **LPE rises (+0.90/+0.90/+0.91)**; GPP-rbf
   is the exception (nearly flat, −0.04…−0.17), so the rational-shrinkage signal is kernel-dependent on this
@@ -188,10 +190,10 @@ shape: GPP 0.83, `docs/MULTICLASS_VALIDATION.md`). We report the text null rathe
 |---|---|---|---|
 | gemma | ✅ all 4 | ✅ | ✅ |
 | qwen  | ✅ all 4 | ✅ | ✅ |
-| llama | ✅ all 4 | ✅ | ⏳ extracting |
+| llama | ✅ all 4 | ✅ | ✅ |
 
-The full 3-model matrix spans **K=2 (4 LeWiDi tasks), K=3 (ChaosNLI), and K=28 (GoEmotions)** — 17 of 18
-(dataset×model) cells complete; only llama×GoEmotions is still extracting (70B, CPU-offloaded). The findings
+The full 3-model matrix spans **K=2 (4 LeWiDi tasks), K=3 (ChaosNLI), and K=28 (GoEmotions)** — all 18
+(dataset×model) cells complete (embeddings on GPU nodes, probing via `batch_probe.sbatch` on CPU). The findings
 above — aleatoric tracks disagreement and the GPP-rbf kernel rescue lifts it; epistemic falls with evidence
 while LPE's rises; the two dissociate; text novel-class OOD is a representation-level null even when the task
 is decodable — replicate cleanly across **gemma-3-27b, qwen3-vl-30b, and llama-3.3-70b**, and the K-breadth
