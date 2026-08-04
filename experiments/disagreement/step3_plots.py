@@ -57,18 +57,24 @@ def per_model(dataset, model):
     ax[1].set_xlabel('layer'); ax[1].set_ylabel('Spearman(human-H, Alea)')
     ax[1].set_title('RQ6: aleatoric tracking by depth'); ax[1].legend(fontsize=8)
 
-    # (3) dissociation: Alea-tracking vs MI-tracking (best layer per method)
-    labels, alea_c, mi_c = [], [], []
+    # (3) dissociation: raw tracking vs the *partial* correlations. Alea and MI come
+    # from the same posterior, so the raw MI bar inherits Alea's association; only the
+    # partials separate the disagreement axis from the evidence axis (RQ1b).
+    labels, alea_c, mi_c, pa_c, pm_c = [], [], [], [], []
     for m in METHODS:
         s = big[big.method == m]
         if s.empty: continue
         bl = s.groupby('layer').soft_ce.mean().idxmin(); sl = s[s.layer == bl]
         labels.append(m); alea_c.append(sl['corrAleaS_entropy'].mean()); mi_c.append(sl['corrMIS_entropy'].mean())
-    x = np.arange(len(labels)); w = 0.38
-    ax[2].bar(x - w / 2, alea_c, w, label='Alea (want high)', color='C3')
-    ax[2].bar(x + w / 2, mi_c, w, label='MI control (want ~0)', color='C0')
+        pa_c.append(sl['pcorrAleaS_entropy_given_MI'].mean() if 'pcorrAleaS_entropy_given_MI' in sl else np.nan)
+        pm_c.append(sl['pcorrMIS_entropy_given_alea'].mean() if 'pcorrMIS_entropy_given_alea' in sl else np.nan)
+    x = np.arange(len(labels)); w = 0.2
+    ax[2].bar(x - 1.5 * w, alea_c, w, label='Alea (raw)', color='C3', alpha=0.45)
+    ax[2].bar(x - 0.5 * w, mi_c, w, label='MI (raw)', color='C0', alpha=0.45)
+    ax[2].bar(x + 0.5 * w, pa_c, w, label='Alea | MI (want high)', color='C3')
+    ax[2].bar(x + 1.5 * w, pm_c, w, label='MI | Alea (want ~0)', color='C0')
     ax[2].axhline(0, color='k', lw=0.8); ax[2].set_xticks(x); ax[2].set_xticklabels(labels, rotation=30, ha='right', fontsize=8)
-    ax[2].set_ylabel('Spearman with human-H'); ax[2].set_title('RQ1/RQ4: aleatoric vs epistemic dissociation'); ax[2].legend(fontsize=8)
+    ax[2].set_ylabel('Spearman with human-H'); ax[2].set_title('RQ1/RQ1b: aleatoric vs epistemic dissociation'); ax[2].legend(fontsize=7)
 
     # (4) epistemic scarcity: mean MI vs n_obs (GPP/LPE)
     for m in ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE']:
@@ -81,6 +87,48 @@ def per_model(dataset, model):
 
     plt.suptitle(f'Disagreement study — {dataset} / {model}', fontsize=14); plt.tight_layout()
     out = os.path.join(d, 'disagreement_overview.png'); fig.savefig(out, dpi=170)
+    print('saved', out)
+
+    selective_panel(dataset, model)
+
+
+def selective_panel(dataset, model, method='GPP-rbf'):
+    """RQ7: is the decomposition useful? AURC by abstention score, at each n_obs,
+    plus the human-entropy of the abstained set. Skipped if step2_selective has not
+    run for this cell."""
+    d = os.path.join(FIGROOT, dataset, model)
+    f = os.path.join(d, 'selective_raw.csv')
+    if not os.path.exists(f):
+        print('no selective_raw.csv — skipping RQ7 panel for', dataset, model); return
+    df = pd.read_csv(f)
+    sub = df[df.method == method]
+    if sub.empty:
+        print(f'no {method} rows in selective_raw.csv'); return
+    scols = {'alea': 'C3', 'mi': 'C0', 'total': 'C7', 'msp': 'C5', 'random': 'k'}
+
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
+    for sc, c in scols.items():
+        s = sub[sub.score == sc]
+        if s.empty: continue
+        g = s.groupby('n_obs')['aurc'].agg(['mean', 'std'])
+        ax[0].errorbar(g.index, g['mean'], yerr=g['std'], marker='o', capsize=3,
+                       color=c, label=sc, ls='--' if sc == 'random' else '-')
+    ax[0].set_xscale('log'); ax[0].set_xlabel('# observations'); ax[0].set_ylabel('AURC (lower = better)')
+    ax[0].set_title(f'RQ7: abstention quality by score ({method})'); ax[0].legend(fontsize=8)
+
+    # Does aleatoric abstention reject the items humans disagreed about?
+    for sc, c in scols.items():
+        s = sub[sub.score == sc]
+        if s.empty or 'absH@0.7' not in s: continue
+        g = s.groupby('n_obs')['absH@0.7'].mean()
+        ax[1].plot(g.index, g.values, marker='s', color=c, label=sc,
+                   ls='--' if sc == 'random' else '-')
+    ax[1].set_xscale('log'); ax[1].set_xlabel('# observations')
+    ax[1].set_ylabel('mean human entropy of abstained set')
+    ax[1].set_title('who gets rejected at 70% coverage'); ax[1].legend(fontsize=8)
+
+    plt.suptitle(f'Selective prediction — {dataset} / {model}', fontsize=13); plt.tight_layout()
+    out = os.path.join(d, 'selective_prediction.png'); fig.savefig(out, dpi=170)
     print('saved', out)
 
 
@@ -105,9 +153,13 @@ def aggregate(variant=None):
     df = pd.DataFrame(rows).sort_values(['variant', 'K', 'dataset', 'model', 'method'])
     print(f'\n=== cross dataset/model headline (best layer, largest n)'
           f"{' — variant=' + variant if variant else ''} ===")
+    # Raw corrMI_entropy is reported next to the partial correlations on purpose: the
+    # two components share a posterior (corrAleaMI), so only the partials separate the
+    # disagreement axis from the evidence axis. See docs/DISAGREEMENT_STUDY.md RQ1b.
     cols = ['dataset', 'model', 'variant', 'K', 'method', 'soft_ce', 'tvd', 'acc',
-            'corrAleaS_entropy', 'mono_alea', 'corrMI_entropy']
-    print(df[cols].to_string(index=False))
+            'corrAleaS_entropy', 'mono_alea', 'corrMIS_entropy',
+            'pcorrAleaS_entropy_given_MI', 'pcorrMIS_entropy_given_alea', 'corrAleaMI']
+    print(df[[c for c in cols if c in df.columns]].to_string(index=False))
     out = os.path.join(FIGROOT, 'aggregate_summary.csv')
     df.to_csv(out, index=False)
     print('\nsaved', out)

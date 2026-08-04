@@ -22,7 +22,7 @@ import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 from sklearn.model_selection import train_test_split
-import sklearn.linear_model as sklm, sklearn.svm as sksvm
+import sklearn.linear_model as sklm, sklearn.svm as sksvm, sklearn.neural_network as skmlp
 from GPax.probing import probabilistic_probe_multiclass as ppm
 
 
@@ -107,11 +107,18 @@ for K in K_LIST:
                                                lengthscale='auto', standardize=False, n=NMC)
                 cell['GPP-rbf'] = (np.array(gr['categorical_mu']),
                                    float(np.mean(np.array(gr['information_gain']))))
-                l = ppm.lpe_multiclass(jnp.array(Xte_zo), jnp.array(Xo_z), yo, num_classes=K, repeats=50)
+                l = ppm.lpe_multiclass(jnp.array(Xte_zo), jnp.array(Xo_z), yo, num_classes=K,
+                                       repeats=50, rng=(K, rep, n))
                 cell['LPE'] = (np.array(l['categorical_mu']),
                                float(np.mean(np.array(l['information_gain']))))
+                # LP/SVM are linear, so GPP-rbf beating them would only show
+                # nonlinear-vs-linear. SVM-rbf and the MLP are nonlinear baselines at
+                # comparable capacity, which is the comparison a reviewer will demand.
                 for mname, clf in [('LP', sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)),
-                                   ('SVM', sksvm.SVC(kernel='linear', probability=True))]:
+                                   ('SVM', sksvm.SVC(kernel='linear', probability=True)),
+                                   ('SVM-rbf', sksvm.SVC(kernel='rbf', probability=True, random_state=rep)),
+                                   ('MLP', skmlp.MLPClassifier(hidden_layer_sizes=(256,), max_iter=500,
+                                                               random_state=rep))]:
                     cell[mname] = (_proba_padded(clf, Xo_z, yo, Xte_zo, K), float('nan'))
             except Exception as e:
                 print('kscaling cell dropped (matched conditions)', K, rep, n, repr(e)); continue
@@ -146,7 +153,8 @@ fig, ax = plt.subplots(1, 3, figsize=(16, 4.6))
 for j, (metric, lab, better) in enumerate([('acc', 'accuracy', 'higher'),
                                            ('brier', 'Brier score', 'lower'),
                                            ('ece', 'ECE', 'lower')]):
-    for meth, c in [('GPP-cosine', 'C0'), ('GPP-rbf', 'C2'), ('LPE', 'C1'), ('LP', 'C4'), ('SVM', 'C5')]:
+    for meth, c in [('GPP-cosine', 'C0'), ('GPP-rbf', 'C2'), ('LPE', 'C1'), ('LP', 'C4'),
+                    ('SVM', 'C5'), ('SVM-rbf', 'C6'), ('MLP', 'C3')]:
         s = big[big.method == meth]
         if s.empty: continue
         g = s.groupby('K')[metric].agg(['mean', 'std'])

@@ -176,16 +176,19 @@ def gpp_multiclass_select(
   return measures
 
 
-def lpe_multiclass(x_query, x_observed=None, y_observed=None, repeats=int(1e2), num_classes=None):
+def lpe_multiclass(x_query, x_observed=None, y_observed=None, repeats=int(1e2), num_classes=None,
+                  rng=None):
   """Linear probe ensemble using bootstrap for multiclass classification.
-  
+
   Args:
     x_query: n' x d input array to be queried.
     x_observed: observed n x d input array.
     y_observed: observed n x 1 indices or n x K one-hot.
     repeats: number of ensemble members.
     num_classes: number of classes K (optional).
-  
+    rng: seed or np.random.Generator for the bootstrap. Pass one for
+      reproducible ensembles; None draws from OS entropy.
+
   Returns:
     Dictionary mapping from name to measures of uncertainty.
   """
@@ -202,26 +205,27 @@ def lpe_multiclass(x_query, x_observed=None, y_observed=None, repeats=int(1e2), 
       if num_classes is None:
           num_classes = int(np.max(y_indices) + 1)
           
+  gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
   p_samples = []
   n_obs = len(x_observed)
   classes = np.unique(y_indices)
-  
+
   if len(classes) < 2:
        raise ValueError("Must have at least 2 classes in the training data.")
 
+  # Indices grouped by class, so every bootstrap member can be guaranteed to see
+  # each observed class (same trick as the binary `lpe` in probabilistic_probe.py).
+  # Without it a resample can omit a class, whose probability column is then padded
+  # to exactly zero -- which biases the ensemble's entropy / mutual information
+  # downward (docs/BUGS.md B11).
+  class_idx = [np.where(y_indices == c)[0] for c in classes]
+  n_free = max(n_obs - len(classes), 0)
+
   for _ in range(repeats):
-    # Bootstrap resampling
-    # Ensure we get at least one sample from each present class to avoid errors
-    # Simpler approach: just standard bootstrap, if a class is missing, 
-    # sklearn handles it but might not output prob for that class. 
-    # To serve as a robust baseline, we force at least one sample per class if possible,
-    # or just accept standard bootstrap. Let's do standard bootstrap.
-    idx = np.random.choice(np.arange(n_obs), (n_obs,))
-    
-    # Check if all classes are present, if not, retry or augment
-    # For simplicity, we just fit on what we have. 
-    # However, we need output shape to be (n_query, num_classes).
-    
+    forced = np.array([gen.choice(ci) for ci in class_idx])       # one per class
+    free = gen.choice(n_obs, (n_free,)) if n_free else np.empty(0, dtype=int)
+    idx = np.hstack([forced, free]).astype(int)
+
     # Use LogisticRegression with multinomial
     cls = sklm.LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
     try:
@@ -229,16 +233,21 @@ def lpe_multiclass(x_query, x_observed=None, y_observed=None, repeats=int(1e2), 
     except Exception:
         # If fit fails (e.g. only 1 class selected), skip this member
         continue
-        
+
     cls_p = cls.predict_proba(x_query) # n_query x n_classes_in_bootstrap
-    
-    # If some classes were missing in bootstrap, we need to pad
+
+    # Pad any class the bootstrap never saw. Unreachable for classes present in
+    # y_observed (see the forced draw above); reachable only for classes absent
+    # from y_observed entirely. Such a class gets the Laplace-smoothed estimate
+    # for zero observations, 1/(n + K), rather than exactly zero.
     if cls_p.shape[1] != num_classes:
-        full_p = np.zeros((x_query.shape[0], num_classes))
+        eps = 1.0 / (len(idx) + num_classes)
+        full_p = np.full((x_query.shape[0], num_classes), eps)
         # map existing classes
         for i, c in enumerate(cls.classes_):
             if c < num_classes:
                 full_p[:, int(c)] = cls_p[:, i]
+        full_p /= full_p.sum(axis=1, keepdims=True)
         p_samples.append(full_p)
     else:
         p_samples.append(cls_p)

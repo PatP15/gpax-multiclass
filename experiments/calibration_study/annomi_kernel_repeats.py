@@ -21,7 +21,8 @@ import numpy as np, jax, jax.numpy as jnp
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-import sklearn.linear_model as sklm
+from sklearn.metrics import balanced_accuracy_score, f1_score
+import sklearn.linear_model as sklm, sklearn.svm as sksvm, sklearn.neural_network as skmlp
 from scipy.optimize import minimize_scalar
 from GPax.probing import probabilistic_probe_multiclass as ppm
 # Canonical calibration metrics (15-bin ECE, multiclass Brier) — shared with calib_analysis.py
@@ -31,7 +32,7 @@ from calib_analysis import ece, brier
 MODELS = [m for m in ['gemma', 'qwen', 'gemma4', 'qwen36']
           if os.path.exists(f'{REPO}/experiments/annomi/data/{m}/embeddings.npz')]
 NOBS = [100, 500, 1500, 2400]; SEEDS = list(range(5)); K = 3; NMC = 1500
-METHODS = ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE', 'LP-temp']
+METHODS = ['GPP-cosine', 'GPP-rbf', 'GPP-laplace', 'LPE', 'LP-temp', 'SVM-rbf', 'MLP']
 
 
 def balance(X, y, seed):
@@ -42,7 +43,7 @@ def balance(X, y, seed):
     rng.shuffle(idx); return X[idx], y[idx]
 
 
-def predict(method, Xtr, ytr, Xte):
+def predict(method, Xtr, ytr, Xte, seed=0):
     if method == 'GPP-cosine':
         m = ppm.gpp_multiclass(jnp.array(Xte), jnp.array(Xtr), jax.nn.one_hot(ytr, K),
                                num_classes=K, n=NMC)
@@ -58,8 +59,22 @@ def predict(method, Xtr, ytr, Xte):
     if method == 'LPE':
         mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
         m = ppm.lpe_multiclass(jnp.array((Xte - mu) / sd), jnp.array((Xtr - mu) / sd), ytr,
-                               num_classes=K, repeats=50)
+                               num_classes=K, repeats=50, rng=seed)
         return np.array(m['categorical_mu'])
+    if method in ('SVM-rbf', 'MLP'):
+        # Nonlinear baselines at comparable capacity to GPP-rbf/GPP-laplace. Without
+        # them the GPP accuracy wins are only nonlinear-vs-linear (LP/LPE/SVM-linear).
+        mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
+        Xtr_z, Xte_z = (Xtr - mu) / sd, (Xte - mu) / sd
+        clf = (sksvm.SVC(kernel='rbf', probability=True, random_state=seed) if method == 'SVM-rbf'
+               else skmlp.MLPClassifier(hidden_layer_sizes=(256,), max_iter=500, random_state=seed))
+        clf.fit(Xtr_z, ytr)
+        p = clf.predict_proba(Xte_z)
+        if p.shape[1] == K:
+            return p
+        cls = clf.classes_.astype(int)
+        full = np.zeros((len(Xte_z), K)); full[:, cls] = p
+        return full
     if method == 'LP-temp':
         # Temperature-scaled logistic probe: the standard "easy calibration fix".
         # Best-practice recipe: fit the scalar T on cross-validated out-of-fold
@@ -98,7 +113,9 @@ for model in MODELS:
     d = np.load(f'{REPO}/experiments/annomi/data/{model}/embeddings.npz', allow_pickle=True)
     Xtr_full, ytr_full = d['X_train_context'], d['y_train_mot']
     Xte, yte = np.array(d['X_test_context']), np.array(d['y_test_mot'])
-    print(f"\n===== {model}: train {Xtr_full.shape} test {Xte.shape} =====", flush=True)
+    _cnt = np.bincount(yte.astype(int)); maj = float(_cnt.max() / _cnt.sum())
+    print(f"\n===== {model}: train {Xtr_full.shape} test {Xte.shape} "
+          f"(test majority baseline {maj:.3f}) =====", flush=True)
     for seed in SEEDS:
         Xb, yb = balance(Xtr_full, ytr_full, seed)
         for n in NOBS:
@@ -109,9 +126,16 @@ for model in MODELS:
                 Xtr, ytr = Xb[:n], yb[:n]
             for method in METHODS:
                 try:
-                    p = predict(method, Xtr, ytr, Xte)
+                    p = predict(method, Xtr, ytr, Xte, seed=seed)
+                    pred = p.argmax(1)
                     rows.append(dict(model=model, method=method, n=n, seed=seed,
-                                     acc=float((p.argmax(1) == yte).mean()),
+                                     acc=float((pred == yte).mean()),
+                                     # train is balanced by undersampling but test is not
+                                     # (65.3% majority), so accuracy alone flatters nothing:
+                                     # lead with balanced accuracy / macro-F1.
+                                     bal_acc=float(balanced_accuracy_score(yte, pred)),
+                                     macro_f1=float(f1_score(yte, pred, average='macro')),
+                                     majority_baseline=maj,
                                      ece=ece(p, yte), brier=brier(p, yte)))
                 except Exception as ex:
                     print(f"  {model} {method} n={n} seed={seed} FAIL: {ex}")
@@ -132,25 +156,31 @@ if not short.empty:
     print(short.to_string(index=False))
 
 # summary at n=2400 (mean +/- std over seeds)
-print("\n===== n=2400 mean+/-std over seeds (accuracy / ECE) =====")
+print("\n===== n=2400 mean+/-std over seeds (balanced accuracy / accuracy / ECE) =====")
 big = df[df.n == 2400]
 summary = {}
 for model in MODELS:
     summary[model] = {}
-    print(f"\n[{model}]")
+    maj_m = float(big[big.model == model].majority_baseline.iloc[0]) if not big[big.model == model].empty else float('nan')
+    print(f"\n[{model}]  (test majority baseline {maj_m:.3f})")
     for method in METHODS:
         s = big[(big.model == model) & (big.method == method)]
         if s.empty: continue
         summary[model][method] = dict(acc=[float(s.acc.mean()), float(s.acc.std())],
+                                      bal_acc=[float(s.bal_acc.mean()), float(s.bal_acc.std())],
+                                      macro_f1=[float(s.macro_f1.mean()), float(s.macro_f1.std())],
+                                      majority_baseline=maj_m,
                                       ece=[float(s.ece.mean()), float(s.ece.std())],
                                       brier=[float(s.brier.mean()), float(s.brier.std())])
-        print(f"  {method:12s} acc={s.acc.mean():.3f}+/-{s.acc.std():.3f}  "
+        print(f"  {method:12s} bal_acc={s.bal_acc.mean():.3f}+/-{s.bal_acc.std():.3f}  "
+              f"macroF1={s.macro_f1.mean():.3f}  acc={s.acc.mean():.3f}+/-{s.acc.std():.3f}  "
               f"ECE={s.ece.mean():.3f}+/-{s.ece.std():.3f}  Brier={s.brier.mean():.3f}")
 
 # figure: accuracy + ECE vs n, per model, methods overlaid with CI bands
 nM = len(MODELS)
 fig, axes = plt.subplots(2, nM, figsize=(5 * nM, 9), squeeze=False)
-colors = {'GPP-cosine': 'C0', 'GPP-rbf': 'C2', 'GPP-laplace': 'C3', 'LPE': 'C1', 'LP-temp': 'C5'}
+colors = {'GPP-cosine': 'C0', 'GPP-rbf': 'C2', 'GPP-laplace': 'C3', 'LPE': 'C1', 'LP-temp': 'C5',
+          'SVM-rbf': 'C6', 'MLP': 'C4'}
 for j, model in enumerate(MODELS):
     for mi, metric in enumerate(['acc', 'ece']):
         ax = axes[mi][j]

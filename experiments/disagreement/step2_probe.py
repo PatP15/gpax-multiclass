@@ -34,8 +34,11 @@ def _nmc(K):
     return 1000 if K > 10 else 2000
 
 
-def predict(method, Xtr, ytr, Xte, K, nmc):
-    """Return (P:(n,K) predicted dist, alea:(n,) aleatoric, mi:(n,) MI or nan)."""
+def predict(method, Xtr, ytr, Xte, K, nmc, seed=0):
+    """Return (P:(n,K) predicted dist, alea:(n,) aleatoric, mi:(n,) MI or nan).
+
+    `seed` controls LPE's bootstrap resampling (see docs/BUGS.md B20) so its
+    ensemble is reproducible across runs, like the GPP paths already are."""
     if method.startswith('GPP'):
         kern = {'GPP-cosine': 'cosine', 'GPP-rbf': 'rbf', 'GPP-laplace': 'laplace'}[method]
         if kern == 'cosine':
@@ -49,7 +52,7 @@ def predict(method, Xtr, ytr, Xte, K, nmc):
     if method == 'LPE':
         mu, sd = Xtr.mean(0), Xtr.std(0) + 1e-8
         m = ppm.lpe_multiclass(jnp.array((Xte - mu) / sd), jnp.array((Xtr - mu) / sd), ytr,
-                               num_classes=K, repeats=50)
+                               num_classes=K, repeats=50, rng=seed)
         return (np.array(m['categorical_mu']), np.array(m['Alea']).flatten(),
                 np.array(m['information_gain']).flatten())
     if method == 'LP-temp':
@@ -95,15 +98,27 @@ def corr_s(a, b):
 
 
 def binned_mono(human, alea, nq=4):
-    """Does predicted aleatoric rise monotonically across human-disagreement
-    quartiles? Spearman of quartile index vs per-quartile mean alea (-1..1)."""
+    """Does predicted aleatoric rise monotonically across human-disagreement bins?
+    Spearman of bin index vs per-bin mean alea (-1..1).
+
+    Human entropy is discrete (few annotators -> few attainable values), so quantile
+    edges collapse and leave <3 non-empty bins on the coarser datasets — which is why
+    this returned nan for ~44% of rows before. When there are fewer distinct values
+    than requested bins, group by distinct value instead."""
     c = _clean(human, alea)
     if c is None:
         return float('nan')
     h, a = c
-    edges = np.quantile(h, np.linspace(0, 1, nq + 1)[1:-1])
-    q = np.digitize(h, edges)
-    means = [a[q == i].mean() for i in range(nq) if np.any(q == i)]
+    uniq = np.unique(h)
+    if len(uniq) < 3:
+        return float('nan')            # genuinely too coarse to assess monotonicity
+    if len(uniq) <= nq:
+        groups = [a[h == u] for u in uniq]
+    else:
+        edges = np.quantile(h, np.linspace(0, 1, nq + 1)[1:-1])
+        q = np.digitize(h, edges)
+        groups = [a[q == i] for i in range(nq) if np.any(q == i)]
+    means = [g.mean() for g in groups if len(g)]
     return float(spearmanr(np.arange(len(means)), means)[0]) if len(means) > 2 else float('nan')
 
 
@@ -135,7 +150,7 @@ def run(dataset, model, synth=False, prompt=False, variant=None):
                     io = rng.choice(len(Xtr_all), n, replace=False)
                     Xo, yo = Xtr_all[io], ytr_all[io]
                     if len(np.unique(yo)) < 2: continue
-                    cell = {m: predict(m, Xo, yo, Xte, K, nmc) for m in METHODS}
+                    cell = {m: predict(m, Xo, yo, Xte, K, nmc, seed=seed) for m in METHODS}
                 except Exception as e:
                     print('cell dropped (matched):', dataset, model, li, seed, n, repr(e)[:90]); continue
                 for m, (P, alea, mi) in cell.items():
@@ -155,6 +170,12 @@ def run(dataset, model, synth=False, prompt=False, variant=None):
                     row['corrAleaS_entropy'] = corr_s(he, alea)        # Spearman
                     row['corrMIS_entropy'] = corr_s(he, mi)
                     row['mono_alea'] = binned_mono(he, alea)           # quartile monotonicity
+                    # Non-circularity control, done properly: alea and MI come from the
+                    # same posterior and are strongly coupled (corrAleaMI below), so the
+                    # raw corrMI_* inherits alea's association. Condition to separate them.
+                    row['pcorrAleaS_entropy_given_MI'] = sm.partial_spearman(he, alea, mi)
+                    row['pcorrMIS_entropy_given_alea'] = sm.partial_spearman(he, mi, alea)
+                    row['corrAleaMI'] = corr_s(alea, mi)               # the coupling itself
                     rows.append(row)
         print(f'  layer {li} done', flush=True)
 
@@ -176,11 +197,17 @@ def run(dataset, model, synth=False, prompt=False, variant=None):
         sl = s[s.layer == bl]
         ca, cm = sl['corrAlea_entropy'].mean(), sl['corrMI_entropy'].mean()
         cas, mono = sl['corrAleaS_entropy'].mean(), sl['mono_alea'].mean()
+        cms = sl['corrMIS_entropy'].mean()
+        pa, pm = sl['pcorrAleaS_entropy_given_MI'].mean(), sl['pcorrMIS_entropy_given_alea'].mean()
+        cam = sl['corrAleaMI'].mean()
         summary[m] = dict(best_layer=int(bl), soft_ce=float(sl.soft_ce.mean()), tvd=float(sl.tvd.mean()),
                           acc=float(sl.acc.mean()), corrAlea_entropy=float(ca), corrMI_entropy=float(cm),
-                          corrAleaS_entropy=float(cas), mono_alea=float(mono))
+                          corrAleaS_entropy=float(cas), corrMIS_entropy=float(cms), mono_alea=float(mono),
+                          pcorrAleaS_entropy_given_MI=float(pa), pcorrMIS_entropy_given_alea=float(pm),
+                          corrAleaMI=float(cam))
         print(f"  {m:11s} L{bl} soft_ce={sl.soft_ce.mean():.3f} tvd={sl.tvd.mean():.3f} acc={sl.acc.mean():.3f}"
-              f"  Alea: r={ca:+.2f} rho={cas:+.2f} mono={mono:+.2f} | MI(ctrl): r={cm:+.2f}")
+              f"  Alea: r={ca:+.2f} rho={cas:+.2f} mono={mono:+.2f} | MI(ctrl): r={cm:+.2f}"
+              f" | partial: alea|MI={pa:+.2f} MI|alea={pm:+.2f} (r(alea,MI)={cam:+.2f})")
     json.dump(summary, open(os.path.join(outdir, 'probe_summary.json'), 'w'), indent=2)
 
     # per-item arrays at the headline config (best layer per method, largest n, seed 0)
@@ -193,7 +220,7 @@ def run(dataset, model, synth=False, prompt=False, variant=None):
         rng = np.random.RandomState(100)
         io = rng.choice(len(d[f'X_train_L{bl}']), min(nmax, len(d[f'X_train_L{bl}'])), replace=False)
         try:
-            P, alea, mi = predict(m, d[f'X_train_L{bl}'][io], d['hard_train'][io], d[f'X_test_L{bl}'], K, nmc)
+            P, alea, mi = predict(m, d[f'X_train_L{bl}'][io], d['hard_train'][io], d[f'X_test_L{bl}'], K, nmc, seed=0)
             per[f'alea_{m}'] = alea; per[f'mi_{m}'] = mi
         except Exception as e:
             print('per-item headline skipped for', m, repr(e)[:60])

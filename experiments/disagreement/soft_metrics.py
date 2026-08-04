@@ -81,6 +81,34 @@ PROXIES = {'entropy': entropy, 'norm_entropy': norm_entropy, 'one_minus_max': on
            'gini': gini, 'top2_margin': top2_margin}   # bern_var added only for K=2
 
 
+# ===================== partial correlation (the non-circularity control) ======
+# The probe's aleatoric E[H(p)] and its mutual information are both functions of
+# the SAME posterior, so they are strongly coupled (empirically rho = 0.6-0.95 on
+# these datasets). A raw corr(MI, human-disagreement) therefore cannot answer
+# "does epistemic track disagreement?" -- it inherits aleatoric's association by
+# construction. The decision-relevant quantity is the *partial* correlation:
+# rho(MI, human | alea) and rho(alea, human | MI).
+
+def partial_spearman(x, y, z):
+    """Spearman rho(x, y | z): rank-transform, then the first-order partial
+    correlation. Returns nan if a variable is constant or z explains one of them
+    exactly (zero residual variance). Pairwise-complete on non-finite values."""
+    x, y, z = (np.asarray(v, dtype=float).ravel() for v in (x, y, z))
+    ok = np.isfinite(x) & np.isfinite(y) & np.isfinite(z)
+    if ok.sum() < 4:
+        return float('nan')
+    from scipy.stats import rankdata
+    rx, ry, rz = (rankdata(v[ok]) for v in (x, y, z))
+    if min(np.std(rx), np.std(ry), np.std(rz)) < 1e-12:
+        return float('nan')
+    r = lambda a, b: float(np.corrcoef(a, b)[0, 1])       # Pearson on ranks == Spearman
+    rxy, rxz, ryz = r(rx, ry), r(rx, rz), r(ry, rz)
+    denom = np.sqrt(max(0.0, (1 - rxz ** 2) * (1 - ryz ** 2)))
+    if denom < 1e-12:
+        return float('nan')
+    return float((rxy - rxz * ryz) / denom)
+
+
 # ===================== (B) distribution-recovery metrics ======================
 # d(p_true, p_pred): lower = better match to the human distribution.
 
@@ -158,6 +186,19 @@ def _self_check():
     # single-vector API
     assert isinstance(entropy(np.array([0.5, 0.5])), float)
     assert isinstance(tvd(np.array([0.5, 0.5]), np.array([0.4, 0.6])), float)
+    # partial_spearman
+    from scipy.stats import spearmanr
+    a, b = rng.randn(300), rng.randn(300)
+    indep = rng.randn(300)
+    # controlling for an independent variable ~ leaves the plain Spearman
+    assert abs(partial_spearman(a, b, indep) - spearmanr(a, b)[0]) < 0.1, 'partial != plain under indep z'
+    # controlling for y itself removes all of x's association with y
+    assert np.isnan(partial_spearman(a, b, b)), 'rho(x,y|y) should be undefined (zero residual)'
+    # a pure confounder: y = f(z), x = g(z) -> partial ~ 0 while raw corr is high
+    z = rng.randn(400); x, y = z + 0.05 * rng.randn(400), z + 0.05 * rng.randn(400)
+    assert spearmanr(x, y)[0] > 0.9, 'fixture: raw corr should be high'
+    assert abs(partial_spearman(x, y, z)) < 0.3, 'confounder not removed'
+    assert np.isnan(partial_spearman([1.0, 2.0], [1.0, 2.0], [1.0, 2.0])), 'too-few-points guard'
     print('soft_metrics self-check: PASS')
 
 

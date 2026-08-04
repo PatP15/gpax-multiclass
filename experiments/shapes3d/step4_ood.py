@@ -75,7 +75,7 @@ def gpp_scores(Xq, Xo, yo):
     }
 
 
-def baseline_scores(Xq, Xo, yo):
+def baseline_scores(Xq, Xo, yo, seed=0):
     # Logistic/distance baselines run on ID-standardized inputs (fit on the train pool),
     # matching step4_kscaling / step4_decomposition; only GPP-cosine uses raw embeddings.
     Xq_z = jnp.array((Xq - mu_pool) / sd_pool); Xo_z = jnp.array((Xo - mu_pool) / sd_pool)
@@ -89,7 +89,7 @@ def baseline_scores(Xq, Xo, yo):
     except Exception as e:
         out['MSP'] = np.full(len(Xq), np.nan); print('msp fail', e)
     try:
-        l = ppm.lpe_multiclass(Xq_z, Xo_z, yo, num_classes=K, repeats=50)   # match calibration study
+        l = ppm.lpe_multiclass(Xq_z, Xo_z, yo, num_classes=K, repeats=50, rng=seed)   # match calibration study
         out['LPE'] = -np.sum(np.array(l['epistemic_var']), axis=1)
     except Exception as e:
         out['LPE'] = np.full(len(Xq), np.nan); print('lpe fail', e)
@@ -123,7 +123,7 @@ def run_regime(name, ood_sampler):
                 continue
             scores = {}
             scores.update(gpp_scores(Xq, Xo, yo))
-            scores.update(baseline_scores(Xq, Xo, yo))
+            scores.update(baseline_scores(Xq, Xo, yo, seed=(rep, n)))
             for method, s in scores.items():
                 auroc = (roc_auc_score(is_ood, -s)               # higher score = ID -> OOD low
                          if np.all(np.isfinite(s)) and np.std(s) > 1e-12 else np.nan)

@@ -108,19 +108,22 @@ def gpr(x_query, x_observed=None, y_observed=None):
   return jax.tree.map(lambda x: x[:, 0], measures)
 
 
-def lpe(x_query, x_observed=None, y_observed=None, repeats=int(1e2)):
+def lpe(x_query, x_observed=None, y_observed=None, repeats=int(1e2), rng=None):
   """Linear probe ensemble using bootstrap.
-  
+
   Args:
     x_query: n' x d input array to be queried.
     x_observed: observed n x d input array. Set to None if no observations.
     y_observed: observed n x 1 evaluations on the input x_observed. Each element
       must be 0 or 1. Set to None if no observations.
     repeats: number of ensemble members.
-  
+    rng: seed or np.random.Generator for the bootstrap. Pass one for reproducible
+      ensembles; None draws from OS entropy.
+
   Returns:
     Dictionary mapping from name to measures of uncertainty.
   """
+  gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
   p_samples = []
   pos_idx = np.where(y_observed)[0]
   neg_idx = np.where(y_observed == 0)[0]
@@ -128,9 +131,9 @@ def lpe(x_query, x_observed=None, y_observed=None, repeats=int(1e2)):
     raise ValueError('Must have at least 1 positive and 1 negative examples.')
   n = len(x_observed) - 2
   for _ in range(repeats):
-    idx_0 = np.random.choice(pos_idx)
-    idx_1 = np.random.choice(neg_idx)
-    idx = np.random.choice(np.arange(n + 2), (n,))
+    idx_0 = gen.choice(pos_idx)
+    idx_1 = gen.choice(neg_idx)
+    idx = gen.choice(np.arange(n + 2), (n,))
     idx = np.hstack(([idx_0, idx_1], idx))
     # make sure to select at least 1 positive and 1 negative
     cls = sklm.LogisticRegression().fit(x_observed[idx], y_observed[idx])

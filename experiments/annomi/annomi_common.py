@@ -4,7 +4,7 @@ import gc
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, roc_auc_score
 from datasets import load_dataset
 import torch
 
@@ -145,7 +145,28 @@ def load_annomi_data():
     
     df_train_proc = process_single_df(df_train, "Train")
     df_test_proc = process_single_df(df_test, "Test")
-    
+
+    # The split comes from two external CSVs, so transcript-level disjointness is not
+    # guaranteed by construction (docs/BUGS.md B19). IC-AnnoMI additionally *rewrites*
+    # AnnoMI dialogues, so a shared transcript_id means near-duplicate utterances across
+    # the split, not just topic overlap. Check it explicitly rather than assuming.
+    if 'transcript_id' in df_train_proc.columns and 'transcript_id' in df_test_proc.columns:
+        tr_ids = set(df_train_proc['transcript_id'].unique())
+        te_ids = set(df_test_proc['transcript_id'].unique())
+        shared = tr_ids & te_ids
+        print(f"Transcript-level split: {len(tr_ids)} train / {len(te_ids)} test transcripts, "
+              f"{len(shared)} shared")
+        if shared:
+            msg = (f"transcript-level leakage: {len(shared)} transcript_id(s) appear in BOTH "
+                   f"splits, e.g. {sorted(shared)[:5]}. Set ANNOMI_ALLOW_OVERLAP=1 to proceed "
+                   f"anyway (results are then not leakage-free).")
+            if os.environ.get('ANNOMI_ALLOW_OVERLAP') == '1':
+                print(f"WARNING: {msg}")
+            else:
+                raise AssertionError(msg)
+    else:
+        print("WARNING: no transcript_id column — cannot verify transcript-level disjointness")
+
     return df_train_proc, df_test_proc
 
 def load_model(model_name=MODEL_NAME):
@@ -372,7 +393,8 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
                 )
             elif method == 'lpe':
                 measures = ppm.lpe_multiclass(
-                    x_query=X_test_jax, x_observed=X_train_jax, y_observed=y_train_jax, num_classes=3, repeats=100
+                    x_query=X_test_jax, x_observed=X_train_jax, y_observed=y_train_jax, num_classes=3,
+                    repeats=100, rng=(seed, n)
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -398,7 +420,8 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
                 )
             elif method == 'lpe':
                 measures = pp.lpe(
-                    x_query=X_test_jax, x_observed=X_train_jax, y_observed=y_train_jax, repeats=100
+                    x_query=X_test_jax, x_observed=X_train_jax, y_observed=y_train_jax, repeats=100,
+                    rng=(seed, n)
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -416,9 +439,18 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
             epistemic = np.array(measures.get('Episteme', np.zeros(len(y_test))))
             aleatoric = np.array(measures.get('Alea', np.zeros(len(y_test))))
 
-        # Metrics
+        # Metrics. Plain accuracy is misleading here: training is class-balanced by
+        # undersampling (see balance_dataset) while the test set keeps its natural
+        # skew (65.3% "neutral" for the K=3 motivation task), so accuracy is scored
+        # against a strong majority baseline. Balanced accuracy and macro-F1 are the
+        # metrics the tables should lead with; majority_baseline is recorded so the
+        # comparison is always visible.
         acc = accuracy_score(y_test, preds)
-        
+        bal_acc = balanced_accuracy_score(y_test, preds)
+        macro_f1 = f1_score(y_test, preds, average='macro')
+        counts = np.bincount(np.asarray(y_test).astype(int))
+        majority_baseline = float(counts.max() / counts.sum())
+
         # AUROC (Misclassification Detection)
         # Target: 1 if Misclassified, 0 if Correct
         misclassified = (preds != y_test).astype(int)
@@ -435,11 +467,17 @@ def run_training_loop(X_train_full, y_train_full, X_test, y_test, sample_sizes, 
         results.append({
             'n': n,
             'accuracy': acc,
+            'balanced_accuracy': bal_acc,
+            'macro_f1': macro_f1,
+            'majority_baseline': majority_baseline,
             'aleatoric': np.mean(aleatoric),
             'epistemic': np.mean(epistemic),
             'auroc': auroc_mis
         })
         
+        print(f"  n={n}: acc={acc:.3f} (majority baseline {majority_baseline:.3f}) "
+              f"bal_acc={bal_acc:.3f} macro_F1={macro_f1:.3f} auroc={auroc_mis:.3f}", flush=True)
+
         # Store raw data for this 'n'
         raw_results[n] = {
             'y_true': y_test,
