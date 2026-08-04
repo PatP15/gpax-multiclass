@@ -38,9 +38,12 @@ AUROC(ID/OOD) over n_obs ∈ {8…128}, 5 seeds:
 | **near-OOD** (held-out 4th shape, novel class) | **0.83** (→0.90 at n=128) | 0.55 | 0.82 | 0.79 | 0.57 | 0.35 |
 | **far-OOD** (uniform-noise images) | 0.48 | 0.56 | 0.35 | 0.27 | 0.29 | **0.61** |
 
-- **Near-OOD / novel-class: GPP wins** — the paper's claim reproduces for multiclass. The added deep-kNN
-  (Sun et al. 2022) is the strongest baseline (0.82, beating Maha/LPE/MSP), but GPP still edges it (0.83),
-  and the win survives the fairness fixes (standardized baselines, 50-member LPE).
+- **Near-OOD / novel-class: GPP edges the best baseline, but within noise** — the paper's claim reproduces
+  directionally for multiclass. The added deep-kNN (Sun et al. 2022) is the strongest baseline (0.82, beating
+  Maha/LPE/MSP), and GPP's 0.83 is **~1σ** above it (0.830 ± 0.012 vs 0.817 ± 0.012 over 5 seeds) — a
+  consistent but not decisive margin, in one regime, and it inverts on far-OOD. State it that way; the win
+  survives the fairness fixes (standardized baselines, 50-member LPE) but does not survive being called
+  clear-cut. The LPE column is also superseded pending the B11/B20 rerun (`docs/BUGS.md`).
 - **Far-OOD / noise:** noise embeddings collapse toward the data centroid (a known ReLU-CNN feature-
   collapse effect), which defeats *all* distance/variance scores (GPP-latentvar 0.48, kNN 0.35, LPE 0.29,
   Maha 0.27); the classifier-confidence scores (MSP 0.61, GPP-Episteme 0.56) are more robust. Honest,
@@ -65,6 +68,10 @@ Accuracy (higher better):
 - **GPP-rbf beats the full probing-baseline suite at every K** — ≥0.98 accuracy with no degradation,
   best ECE at K=16 (0.196), best Brier everywhere. SVM (linear) is the strongest classical baseline
   (up to 0.97 at K=16) but still trails GPP-rbf; LP≈LPE.
+  > ⚠️ **Every baseline in this table is linear** (LP, linear SVM, LPE), so "GPP-rbf 0.984 vs LP 0.907"
+  > is a nonlinear-vs-linear comparison and a reviewer will discount it. `step4_kscaling.py` now also runs
+  > **SVM-rbf** and an **MLP** at comparable capacity; the table is provisional until that rerun lands.
+  > The LPE column is separately superseded by the B11/B20 fix.
 - **The cosine kernel is what fails to scale:** GPP-cosine collapses to ~0.64 and its gap to the
   baselines *widens* with K — the same capacity ceiling as §3–5c, now visible as a function of K. (This
   corrects an earlier version that used object hue, which M1's color-binarized embeddings cannot resolve,
@@ -76,7 +83,7 @@ Accuracy (higher better):
 ## Productized kernel fix on real LLM embeddings
 
 The cosine-kernel capacity ceiling (`docs/CALIBRATION_STUDY.md` §3–5c) is now fixable through the probe
-API (`gpp_multiclass(kernel=…)`, `gpp_multiclass_select(lengthscale='auto')`). On AnnoMI (K=3, 4 LLMs,
+API (`gpp_multiclass(kernel=…)`, `gpp_multiclass_select(lengthscale='auto')`). On IC-AnnoMI (K=3, 4 LLMs,
 5 seeds), GPP-Laplace has the best accuracy on every model and slashes ECE on the scale-sensitive ones
 (gemma 0.125→0.027, gemma4 0.211→0.069), taking GPP from clearly-worse-calibrated (cosine) to
 calibration-competitive-or-better than LPE while leading on accuracy — see `docs/CALIBRATION_STUDY.md` §6.
@@ -88,6 +95,6 @@ The same kernel fix is what lets GPP scale to K=16 (Pillar 1b).
 
 | pillar | before | now |
 |---|---|---|
-| 1. accuracy / data-efficiency | ✅ (shapes + AnnoMI) | ✅ + K-scaling to K=16 (productized kernel) + 5-seed error bars |
+| 1. accuracy / data-efficiency | ✅ (shapes + IC-AnnoMI) | ✅ + K-scaling to K=16 (productized kernel) + 5-seed error bars |
 | 2. fuzziness + rational uncertainty | ⚠️ judged-prob only, decomposition merely plotted | ✅ decomposition quantitatively validated |
 | 3. OOD detection | ❌ absent for multiclass | ✅ near-OOD win; far-OOD characterized honestly |

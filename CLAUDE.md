@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A fork of Google's **GPax** that extends **Gaussian Process Probes (GPP)** — Wang et al., *"Gaussian Process Probes (GPP) for Uncertainty-Aware Probing"*, [arXiv:2305.18213](https://arxiv.org/abs/2305.18213), NeurIPS 2023 — from **binary** to **multiclass** classification, and applies it to probe open-weight LLM representations.
 
-The headline research application lives in `experiments/annomi/`: classifying the **client talk type** (`change` / `sustain` / `neutral`) of utterances in **motivational-interviewing** transcripts (the AnnoMI dataset), from the hidden representations of **Gemma-3-27b-it / Qwen3-VL-30B / Llama-3.3-70B**, decomposing the probe's uncertainty into aleatoric vs. epistemic. The `experiments/shapes3d/` code is the controlled synthetic verification that reproduces the paper's Figures 4/5/6.
+The **headline** contribution is `experiments/disagreement/` (see `docs/DISAGREEMENT_STUDY.md`): does the probe's *aleatoric* component recover genuine **human annotator disagreement** on multi-annotator NLP datasets (LeWiDi K=2 ×4, ChaosNLI K=3, GoEmotions K=28 × 3 LLMs), while its *epistemic* component tracks evidence instead — plus the kernel-capacity diagnosis in `docs/CALIBRATION_STUDY.md`.
+
+`experiments/annomi/` is an applied **case study** (not a headline claim): classifying the **client talk type** (`change` / `sustain` / `neutral`) of utterances in **motivational-interviewing** transcripts, from the hidden representations of **Gemma-3-27b-it / Qwen3-VL-30B / Llama-3.3-70B**. **The dataset is IC-AnnoMI** — the ChatGPT-augmented extension of AnnoMI (Wu et al. 2023) from LREC-COLING 2024, loaded from `IC_AnnoMI.csv` / `IC-AnnoMI (test set).csv` — so part of it is synthetically rewritten dialogue and results are not comparable to published AnnoMI numbers. Lead with **balanced accuracy / macro-F1**, never plain accuracy: training is class-balanced by undersampling while the test set keeps its **65.3% majority** skew. `experiments/shapes3d/` is the controlled synthetic verification that reproduces the paper's Figures 4/5/6.
 
 The cluster (Harvard FASRC Cannon) is where the LLM embedding extraction runs; results are committed back and pulled locally. The local clone has historically lagged `origin` — always `git fetch` first.
 
@@ -17,7 +19,7 @@ GPax/            JAX/Flax implementation of GPP (source of truth for the method)
 GPtorch/         pure-PyTorch port of GPax (no JAX deps); parity asserted, not yet used by experiments
 experiments/
   shapes3d/      3D-Shapes synthetic verification (CNN embeddings → GPP; reproduces Figs 4/5/6)
-  annomi/        AnnoMI motivational-interviewing pipeline (LLM embeddings → GPP); binary/ = 2-way variant
+  annomi/        IC-AnnoMI motivational-interviewing pipeline (LLM embeddings → GPP); binary/ = 2-way variant
 tools/           standalone helper/debug scripts (check_*, debug_jax, download_model)
 docs/            reports + extra READMEs, incl. BUGS.md (audit) and PORTING_REPORT.md
 tests/           test_parity.py (binary-vs-multiclass episteme parity)
@@ -37,7 +39,7 @@ tests/           test_parity.py (binary-vs-multiclass episteme parity)
 
 3. **Experiments** (both import JAX `GPax`):
    - **`experiments/shapes3d/`** — `gpp_extended_verification.py` is the original monolith (loads `3dshapes.h5`, trains 3 CNNs via `cnn_model.py`, labels via `ontology.py`, runs probes, plots). Refactored into `step1_train_and_embed.py` → `step2_run_probes.py` → `step3_plot_*.py` with shared `gpp_common.py`. `verify_equivalence.py` checks binary≡multiclass at K=2; `visualize_manifold.py` draws the 3-simplex. `run_*.sh` are the runners.
-   - **`experiments/annomi/`** — the LLM/motivation pipeline. `annomi_common.py` holds config: model via env var `ANNOMI_MODEL_TYPE` (`gemma`|`qwen`|`llama`); data/results/figures namespaced per model under `experiments/annomi/{data,results,figures}/<model>/`. `step1_process_data*.py` extract LLM embeddings (HF `transformers`, last-token hidden state, PCA→64-D) → `.npz`. `step2_exp*.py` are the experiments (client-only, +therapist-context, prompted/few-shot, quality, "cascading") sweeping `N ∈ {50…2400}`. `step3_*.py` visualize/confusion-matrix. `binary/` is the 2-way (`change` vs not) variant. `batch_*.sh` request an A100-80GB on `seas_gpu`; `run_all_cluster.sh` chains them with SLURM dependencies.
+   - **`experiments/annomi/`** — the LLM/motivation pipeline. `annomi_common.py` holds config: model via env var `ANNOMI_MODEL_TYPE` (`gemma`|`qwen`|`llama`); data/results/figures namespaced per model under `experiments/annomi/{data,results,figures}/<model>/`. `step1_process_data*.py` extract LLM embeddings (HF `transformers`, last-token hidden state, PCA→64-D) → `.npz`. `step2_exp*.py` are the experiments (client-only, +therapist-context, prompted/few-shot, quality) sweeping `N ∈ {50…2400}`. **`step2_exp4_quality.py` is an oracle upper bound** — it embeds the gold therapist-quality label into the test prompt (B2). The "cascading uncertainty" variant exists only in the orphan `run_annomi_pipeline.py`, produces no reported number, and is no longer a claimed contribution (B3). `step3_*.py` visualize/confusion-matrix. `binary/` is the 2-way (`change` vs not) variant. `batch_*.sh` request an A100-80GB on `seas_gpu`; `run_all_cluster.sh` chains them with SLURM dependencies.
 
 ## The math (have this down before touching `gp_multiclass.py`)
 
@@ -65,7 +67,7 @@ python experiments/shapes3d/gpp_extended_verification.py
 python experiments/shapes3d/verify_equivalence.py       # binary ≡ multiclass at K=2
 python tests/test_parity.py                             # episteme parity (binary vs multiclass)
 
-# AnnoMI (LLM motivation) — pick a model via env var
+# IC-AnnoMI (LLM motivation) — pick a model via env var
 ANNOMI_MODEL_TYPE=gemma python experiments/annomi/step1_process_data.py   # extract embeddings (needs GPU+LLM)
 ANNOMI_MODEL_TYPE=gemma python experiments/annomi/step2_exp2_context.py   # probe (runs on committed .npz)
 # Cluster: sbatch experiments/annomi/batch_step1.sh  (A100-80GB, seas_gpu)
@@ -76,7 +78,11 @@ ANNOMI_MODEL_TYPE=gemma python experiments/annomi/step2_exp2_context.py   # prob
 
 ## Known issues
 
-A full audited list (with file:line, severity, repro, and fix status) is in **`docs/BUGS.md`**. The high-confidence fixes are applied on branch `cleanup-and-fixes` (sign-inverted uncertainty-AUROC, NaN binary aleatoric, leftover `jax.debug.print`, missing pandas import). Still open / by-design decisions documented there: **test-label leakage** in the "Context+Quality" experiment (gold therapist-quality label injected into the test prompt), the **"cascading uncertainty"** contribution being unimplemented in the run path, no repeats/error bars, and the missing GPtorch parity test.
+A full audited list (with file:line, severity, repro, and fix status) is in **`docs/BUGS.md`**. Fixed on branch `cleanup-and-fixes`: sign-inverted uncertainty-AUROC (B1), NaN binary aleatoric (B4), leftover `jax.debug.print` (B13), missing pandas import (B8), the correct GP NLML (B14), and — as of 2026-08-04 — the **LPE bootstrap** (B11 class coverage + **B20 unseeded RNG**, which made every committed LPE number irreproducible), the **partial-correlation control** (B21) and `mono_alea` (B22).
+
+**Withdrawn rather than fixed** (documented, not repaired): the "Context+Quality" variant leaks the gold therapist-quality label into the *test* prompt, so it is labeled an **oracle upper bound** (B2); the **"cascading uncertainty"** contribution was never in the run path and is no longer claimed (B3). Still open: the missing GPtorch parity test (B17), un-jittered Cholesky (B19), and B5/B7/B10/B12/B15/B16.
+
+**Before quoting any LPE number**, check whether it predates the B20 fix — the disagreement/calibration/K-scaling LPE cells committed before 2026-08-04 are superseded pending a cluster rerun.
 
 ## Conventions & gotchas
 

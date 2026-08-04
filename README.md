@@ -101,7 +101,7 @@ GPtorch/             pure-PyTorch port of GPax/probing (parity-checked; experime
 experiments/
   shapes3d/          3D-Shapes synthetic verification (CNN embeddings → GPP; reproduces paper Figs 4/5/6)
                      + step4_{decomposition_validation,ood,kscaling}.py (multiclass validation)
-  annomi/            AnnoMI motivational-interviewing pipeline (LLM embeddings → GPP, K=3 talk type)
+  annomi/            IC-AnnoMI motivational-interviewing pipeline (LLM embeddings → GPP, K=3 talk type)
   calibration_study/ GPP-vs-LPE calibration analysis + the kernel rescue (+ annomi_kernel_repeats.py)
   disagreement/      aleatoric-vs-human-disagreement datasets + loaders (ChaosNLI / LeWiDi / GoEmotions)
 docs/                MULTICLASS_VALIDATION.md, CALIBRATION_STUDY.md, BUGS.md, PORTING_REPORT.md
@@ -117,10 +117,24 @@ Run scripts from the repo root, e.g. `python experiments/annomi/step2_exp2_conte
 | dataset | task | where / how to get it |
 |---|---|---|
 | **3D-Shapes** | synthetic, controllable fuzziness (paper's substrate) | `python experiments/shapes3d/download_data.py` (≈480k imgs → repo root `3dshapes.h5`); CNN embedding runs on a GPU/cluster |
-| **AnnoMI** | LLM-embedding probe, K=3 client talk-type | committed under `experiments/annomi/data/<model>/*.npz` (no download needed for `step2_*`) |
+| **IC-AnnoMI** | LLM-embedding probe, K=3 client talk-type | committed under `experiments/annomi/data/<model>/*.npz` (no download needed for `step2_*`) |
 | **ChaosNLI** | NLI with 100 human annotations/example (human-disagreement ground truth) | **committed** under `experiments/disagreement/data/chaosNLI_v1.0/` (source: [easonnie/ChaosNLI](https://github.com/easonnie/ChaosNLI)) |
 | **GoEmotions** | 28-way Reddit emotions, per-rater labels | `python experiments/disagreement/download_data.py` (HF parquet); **`pip install pyarrow`** to load |
 | **LeWiDi** | 4 subjective text tasks w/ per-annotator soft labels (2021/2023/2025 editions) | **git submodule**: `git submodule update --init experiments/disagreement/lewidi` |
+
+> **On the IC-AnnoMI naming.** The corpus loaded by `experiments/annomi/annomi_common.py` is
+> **IC-AnnoMI** (`IC_AnnoMI.csv` / `IC-AnnoMI (test set).csv`) — the **ChatGPT-augmented** extension of
+> AnnoMI (Wu et al., 2023) published at LREC-COLING 2024, *not* vanilla AnnoMI. This matters for two
+> reasons: (a) part of the corpus is synthetically rewritten dialogue, so results are not directly
+> comparable to AnnoMI numbers in the literature; (b) because IC-AnnoMI rewrites AnnoMI dialogues, a
+> `transcript_id` shared across the train/test CSVs means *near-duplicate* utterances, not just topic
+> overlap. `load_annomi_data` now asserts transcript-level disjointness and raises unless
+> `ANNOMI_ALLOW_OVERLAP=1`. The source CSVs are not committed (cluster-only), so `step1_*` is not
+> reproducible from a clean clone; `step2_*` runs on the committed `.npz`.
+>
+> Lead with **balanced accuracy / macro-F1**: the test set is 12.6 / 65.3 / 22.1%, so plain accuracy is
+> scored against a **65.3% majority baseline**. IC-AnnoMI is a **case study** here, not a headline claim —
+> see `docs/BUGS.md` B2/B3 for the two contributions withdrawn from it.
 
 **Disagreement loaders** (uniform `{text, soft_label, hard_label, n_annot, entropy}` records — the
 substrate for "does the probe recover the human label distribution?"):
@@ -150,7 +164,7 @@ python experiments/shapes3d/step4_decomposition_validation.py # aleatoric/episte
 python experiments/shapes3d/step4_ood.py                      # multiclass OOD detection
 python experiments/shapes3d/step4_kscaling.py                 # K ∈ {2,4,8,16} scaling
 
-# AnnoMI (LLM probe) — pick a model via env var; step2 runs on committed .npz (no GPU)
+# IC-AnnoMI (LLM probe) — pick a model via env var; step2 runs on committed .npz (no GPU)
 ANNOMI_MODEL_TYPE=gemma python experiments/annomi/step2_exp2_context.py
 
 # calibration study + productized-kernel re-validation on real LLM embeddings
@@ -165,6 +179,10 @@ Cluster: SLURM batch scripts under `experiments/annomi/` request an A100 for emb
 
 ## 6. Key results & docs
 
+- **[`docs/DISAGREEMENT_STUDY.md`](docs/DISAGREEMENT_STUDY.md)** — **the headline study.** Does the probe's
+  *aleatoric* component recover genuine human annotator disagreement, while its *epistemic* component tracks
+  evidence instead? 3 LLMs × 6 multi-annotator datasets × K ∈ {2, 3, 28}, 5 seeds. Includes the partial-
+  correlation result that separates the two components (GPP's decompose; an ensemble baseline's do not).
 - **[`docs/MULTICLASS_VALIDATION.md`](docs/MULTICLASS_VALIDATION.md)** — the multiclass extension validated
   against the paper's three pillars (probing/data-efficiency, fuzziness + rational uncertainty, OOD),
   plus K-scaling to K=16.
@@ -186,5 +204,6 @@ Cluster: SLURM batch scripts under `experiments/annomi/` request an A100 for emb
 ```
 
 Datasets, if used: ChaosNLI (Nie et al., EMNLP 2020), LeWiDi (Leonardelli et al., SemEval-2023),
-GoEmotions (Demszky et al., ACL 2020), AnnoMI (Wu et al., 2023), 3D-Shapes (Burgess & Kim, 2018).
+GoEmotions (Demszky et al., ACL 2020), IC-AnnoMI (LREC-COLING 2024; the ChatGPT-augmented extension of
+AnnoMI, Wu et al. 2023), 3D-Shapes (Burgess & Kim, 2018).
 The Dirichlet-GP construction follows Milios et al. (NeurIPS 2018).

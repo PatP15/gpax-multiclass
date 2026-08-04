@@ -27,8 +27,8 @@ Paths below are post-restructure. Fixes marked ✅ are applied on branch `cleanu
 | ID | Severity | Status | One-line |
 |----|----------|--------|----------|
 | B1 | 🔴 Critical | ✅ Fixed | Uncertainty-AUROC sign-inverted (reported ~0.31, true ~0.69) |
-| B2 | 🔴 Critical | ⚠️ Open (design) | Gold test-set quality label leaked into "Context+Quality" prompt |
-| B3 | 🔴 Critical | ⚠️ Open (design) | "Cascading uncertainty" not implemented in the run path; orphan version broken |
+| B2 | 🔴 Critical | 🚫 Closed (descoped) | Gold test-set quality label leaked into "Context+Quality" prompt — now labeled an oracle upper bound |
+| B3 | 🔴 Critical | 🚫 Closed (descoped) | "Cascading uncertainty" not implemented in the run path — withdrawn as a contribution |
 | B4 | 🟠 High | ✅ Fixed | Binary aleatoric/info-gain → `NaN` for confident samples |
 | B5 | 🟠 High | ⚠️ Open | Silent `except: pass` hides probe failures in 3D-Shapes driver |
 | B6 | 🟠 High | ⚠️ Open (design) | Synthetic "ambiguity" ≠ paper's label-flip; `gt_prob` = interpolation weight |
@@ -36,7 +36,7 @@ Paths below are post-restructure. Fixes marked ✅ are applied on branch `cleanu
 | B8 | 🟠 High | ✅ Fixed | `uncertainty_analysis.py` `NameError` (no `import pandas`) |
 | B9 | 🟠 High | ✅ Addressed | Repeats added: `annomi_kernel_repeats.py` + step4 scripts run ≥5 seeds with mean±std error bars |
 | B10 | 🟡 Med | ⚠️ Open | 3D-Shapes ground-truth teacher leakage + `num_classes` inferred from KNN |
-| B11 | 🟡 Med | ⚠️ Open | LPE bootstrap can omit a class → zero-prob column biases entropy/MI |
+| B11 | 🟡 Med | ✅ Fixed | LPE bootstrap can omit a class → zero-prob column biases entropy/MI |
 | B12 | 🟡 Med | ⚠️ Open | Multiclass OvR-AUROC assumes prob columns align to sorted labels |
 | B13 | 🔵 Low | ✅ Fixed | ~14 leftover `jax.debug.print` in the jitted probe path |
 | B14 | 🔵 Low | ✅ Fixed | `dirichlet_gp_nll` rewritten (correct GP NLML, used for ML lengthscale selection); `dirichlet_mnll` reimplemented on the MC-softmax predictive |
@@ -44,7 +44,10 @@ Paths below are post-restructure. Fixes marked ✅ are applied on branch `cleanu
 | B16 | 🔵 Low | ⚠️ Open | `verify_equivalence.py` uses the SE kernel, not the cosine kernel probes use |
 | B17 | 🔵 Low | ⚠️ Open | GPtorch JAX↔torch parity test claimed in PORTING_REPORT but not committed |
 | B18 | 🔵 Low | ⚠️ Watch | Last-token pooling assumes right-padding (OK only at batch_size=1) |
-| B19 | 🔵 Low | ⚠️ Watch | Un-jittered Cholesky; transcript-level train/test split unverifiable in-repo |
+| B19 | 🔵 Low | ⚠️ Partly fixed | Un-jittered Cholesky; transcript-level split now asserted in `load_annomi_data` (number pending a cluster run) |
+| B20 | 🔴 Critical | ✅ Fixed | LPE bootstrap used the unseeded global `np.random` → every committed LPE number irreproducible |
+| B21 | 🟡 Med | ✅ Fixed | Non-circularity control measured as a raw correlation between two coupled quantities |
+| B22 | 🔵 Low | ✅ Fixed | `mono_alea` was `nan` on 5070/9030 rows (quantile edges collapse on discrete human entropy) |
 
 ---
 
@@ -79,7 +82,14 @@ method looked broken when it actually detects errors well.
 > both to `−entropy` (confidence), **same** polarity, **both** inverted — confirmed by the
 > empirical run above.
 
-### B2 — Gold test-set quality label leaked into the input ⚠️ Open (design decision)
+### B2 — Gold test-set quality label leaked into the input 🚫 Closed (descoped)
+
+**Resolution (2026-08-04).** Not repaired; the variant is withdrawn as a result. The
+"Context+Quality" scenario is labeled an **oracle upper bound** wherever it appears, and
+IC-AnnoMI is demoted from headline claim to case study. Implementing the honest version
+(train a quality probe on TRAIN only, inject out-of-fold predictions for TRAIN and model
+predictions for TEST) remains the fix if the variant is ever promoted back. Original
+diagnosis below.
 **Where:** `experiments/annomi/step1_process_data.py` (`process_split`, the `qual_map`/
 `X_context_qual` construction).
 
@@ -95,7 +105,12 @@ motivation target), but gold therapist quality correlates with client talk type.
 TRAIN only and inject the *predicted* quality for TEST (and out-of-fold predictions for
 TRAIN), or label the variant explicitly as an oracle upper bound.
 
-### B3 — "Cascading uncertainty" is not implemented in the run path ⚠️ Open (design)
+### B3 — "Cascading uncertainty" is not implemented in the run path 🚫 Closed (descoped)
+
+**Resolution (2026-08-04).** Withdrawn from the contribution list rather than implemented —
+the paper now rests on the disagreement study and the kernel-capacity diagnosis. The orphan
+`run_annomi_pipeline.py` path stays in the tree but is documented as not producing any
+reported number. Original diagnosis below.
 **Where:** `experiments/annomi/step2_exp4_quality.py`, `experiments/annomi/run_annomi_pipeline.py`.
 
 The README's novel contribution — concatenating the upstream quality model's
@@ -175,10 +190,23 @@ is fit on the same embeddings/split the M1 probe uses (circular), and `num_class
 from `gt_probs.shape[1]` (classes the KNN happened to see), not the true `K` — which can
 undercount classes and corrupt one-hot/AUROC at small `N`.
 
-### B11 — LPE bootstrap can omit a class ⚠️ Open
+### B11 — LPE bootstrap can omit a class ✅ Fixed
 `GPax/probing/probabilistic_probe_multiclass.py` (`lpe_multiclass`): bootstrap resamples may
 miss a class; the padding leaves that class column at exactly zero probability, biasing the
 entropy / mutual-information estimates downward.
+
+**Why it mattered more than "medium" suggests:** LPE is the comparator in the flagship RQ3
+dissociation (GPP's MI falls with evidence, LPE's rises), so a known downward bias in LPE's
+entropy/MI sat underneath the headline claim.
+
+**Evidence (reproduced):** with a 2-member rare class at `n_obs=40`, P(a member omits it) =
+0.129, and 4 of 40 members omitted it — each contributing an exactly-zero column.
+
+**Fix:** guarantee class coverage per resample (one forced draw per observed class, then
+`n_obs − |classes|` free draws), mirroring the trick the binary `lpe` already used
+(`probabilistic_probe.py:131-133`). Classes absent from `y_observed` entirely now receive the
+Laplace floor `1/(n + K)` and the row is renormalized, instead of exactly zero. Guarded by
+`tests/test_lpe_bootstrap.py`.
 
 ### B12 — Multiclass OvR-AUROC column alignment ⚠️ Open
 `compute_auroc(..., multi_class='ovr')` assumes the probability columns map to sorted label
@@ -196,7 +224,55 @@ fewer columns → silently corrupted or `nan` scores.
 - **B16 ⚠️** — `experiments/shapes3d/verify_equivalence.py` builds its check with `squared_exponential_kernel`, not the `cosine_kernel` the probes actually use, and its broad `try/except` can make the check pass/return without printing FAILURE.
 - **B17 ⚠️** — `docs/PORTING_REPORT.md` claims a GPU-verified JAX↔torch parity suite, but `tests/test_parity.py` only checks binary-vs-multiclass episteme within JAX. No committed test exercises `GPtorch` against `GPax`.
 - **B18 ⚠️ watch** — `experiments/annomi/annomi_common.py` last-token pooling uses `attention_mask.sum(1)-1`, which assumes **right** padding; correct only because `step1` extracts at `batch_size=1`. A left-padding tokenizer with batching would grab a pad token.
-- **B19 ⚠️ watch** — `GPax/probing/gp.py` `gp_predict` Cholesky has no jitter (diagnosed *not* to be the cause of B4 — the posterior was finite — but a risk for near-duplicate observations). Also, AnnoMI's train/test split comes from two external CSVs; whether they share `transcript_id`s (transcript-level leakage) can't be verified in-repo — add an assertion in `load_annomi_data`.
+- **B19 ⚠️ partly fixed** — `GPax/probing/gp.py` `gp_predict` Cholesky still has no jitter (diagnosed *not* to be the cause of B4 — the posterior was finite — but a risk for near-duplicate observations). The transcript-leakage half is now handled: `load_annomi_data` computes the `transcript_id` intersection between the two external CSVs, prints train/test/shared counts, and raises unless `ANNOMI_ALLOW_OVERLAP=1`. The CSVs live only on the cluster, so the actual number lands with the next cluster run.
+
+---
+
+## Added by the 2026-08-04 pre-rerun pass
+
+### B20 — LPE bootstrap used the unseeded global RNG ✅ Fixed
+**Where:** `GPax/probing/probabilistic_probe_multiclass.py` (`lpe_multiclass`, the
+`np.random.choice` resample) and `GPax/probing/probabilistic_probe.py` (`lpe`, three draws).
+
+Neither took a seed, and no caller ever seeded the global `np.random` (callers use local
+`RandomState`/`default_rng` objects, which do not affect it). So the seed loops in
+`step2_probe.py`, `annomi_kernel_repeats.py`, `step4_kscaling.py`, `step4_ood.py` and
+`annomi_common.run_training_loop` **did not control LPE at all**: its per-seed "repeats" were
+independent draws from OS entropy, and no committed LPE number is reproducible.
+
+**Impact:** every LPE cell in `docs/DISAGREEMENT_STUDY.md`, `docs/CALIBRATION_STUDY.md` §6 and
+`docs/MULTICLASS_VALIDATION.md` — including the LPE side of the flagship RQ3 dissociation and
+the error bars, which were partly over RNG noise rather than seed variation.
+**Fix:** `rng=` parameter → `np.random.default_rng(rng)`, threaded from all five callers.
+Guarded by `tests/test_lpe_bootstrap.py` (same `rng` → bit-identical; different `rng` → differs).
+
+### B21 — The non-circularity control was measured with the wrong statistic ✅ Fixed
+**Where:** `experiments/disagreement/step2_probe.py` (`corrMI_*` rows) and the claim at
+`docs/DISAGREEMENT_STUDY.md` §"What ground-truth aleatoric means here".
+
+The doc asserts that epistemic MI "must **not** track human disagreement" and expects ≈0. The
+committed `corrMI_entropy` is 0.20–0.35 on 11 of 54 GPP cells, which reads as the control
+failing. It is not: aleatoric `E[H(p)]` and MI are both functions of the same posterior and are
+strongly coupled here (`corrAleaMI` = 0.62–0.95), so a raw `corr(MI, human-H)` inherits
+aleatoric's association by construction and cannot answer the question.
+
+**Evidence:** partial Spearman on the committed `per_item.npz` arrays — MI's association
+vanishes or inverts once aleatoric is held fixed (MD/qwen +0.129 → −0.114; HS-Brexit/gemma
++0.242 → −0.181) while aleatoric survives conditioning (+0.309 → +0.304; +0.327 → +0.287).
+**Fix:** `soft_metrics.partial_spearman`; `step2_probe` records
+`pcorrAleaS_entropy_given_MI`, `pcorrMIS_entropy_given_alea` and `corrAleaMI`. The doc's control
+is restated as a partial correlation (RQ1b), which also yields a stronger claim: GPP-rbf's
+aleatoric survives conditioning where LPE's collapses (HS-Brexit 0.343 → 0.046).
+
+### B22 — `mono_alea` silently `nan` on 44% of rows ✅ Fixed
+**Where:** `experiments/disagreement/step2_probe.py` (`binned_mono`).
+
+Human entropy is discrete (few annotators → few attainable values), so `np.quantile` edges
+collapse and `np.digitize` leaves fewer than 3 non-empty bins; the function then returns `nan`.
+Empirically `nan` on **5070 of 9030** committed rows, and the `mono_alea` column of
+`aggregate_summary.csv` is empty for every cell — a reported metric that never populated.
+**Fix:** when there are fewer distinct human-entropy values than requested bins, group by
+distinct value instead of by quantile (still `nan` below 3 distinct values, which is honest).
 
 ## Notes on things checked and found OK / dismissed
 

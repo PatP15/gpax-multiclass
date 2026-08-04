@@ -171,13 +171,25 @@ even an angular SE-on-sphere) restores and exceeds GPP's advantage over LPE; an 
 (SE-sphere) rescues as well as Euclidean RBF, ruling out the metric as the cause and identifying the
 lengthscale (capacity) as the operative lever.* Script: `experiments/calibration_study/kernel_compare.py`.
 
-## 6. ECE on AnnoMI LLM probes — and the kernel fix carries over to real embeddings
-AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available (a weaker, different
+## 6. ECE on IC-AnnoMI LLM probes — and the kernel fix carries over to real embeddings
+IC-AnnoMI has no injected fuzziness, so only confidence-vs-accuracy ECE is available (a weaker, different
 notion than §1; the controlled 3D-Shapes fuzziness test is the real one). With the **cosine** kernel,
 LPE was better-calibrated than GPP on the high-variance-embedding models — consistent with the cosine
 capacity ceiling found above. **The productized local kernel (§5c, now in the probe API as
 `gpp_multiclass_select`) closes this on real LLM embeddings too.** Client-motivation task (K=3), n=2400,
 **mean ± std over 5 seeds** (accuracy / 15-bin ECE, lower ECE = better):
+
+> ⚠️ **Two caveats on this table, both being addressed (2026-08-04).**
+> 1. **Accuracy here is measured against a 65.3% majority baseline that the table never showed.** The
+>    IC-AnnoMI test set is 12.6 / 65.3 / 22.1% while training is class-balanced by undersampling, so every
+>    accuracy below (0.503–0.686) sits at or barely above majority-class performance. Plain accuracy is the
+>    wrong headline metric for this task; `annomi_kernel_repeats.py` now also records **balanced accuracy**
+>    and **macro-F1**, and prints the majority baseline. The *relative* ordering of methods is unaffected,
+>    but the absolute numbers should not be read as "the probe works well".
+> 2. **The LPE column is superseded.** LPE's bootstrap was unseeded and could omit a class
+>    (`docs/BUGS.md` B11/B20), so its numbers are not reproducible. Fixed; rerun pending. Nonlinear
+>    baselines (SVM-rbf, MLP) are also added but not yet run — until then, GPP's accuracy wins here are
+>    against *linear* probes only.
 
 | model | GPP-cosine | GPP-RBF (auto ℓ) | GPP-Laplace (auto ℓ) | LPE | LP-temp (CV-scaled) |
 |---|---|---|---|---|---|
@@ -212,16 +224,16 @@ capacity ceiling found above. **The productized local kernel (§5c, now in the p
 4. **Productized (done).** `gpp_multiclass` now exposes `kernel={cosine|rbf|laplace|rbf_sphere}` and
    `lengthscale`, and `gpp_multiclass_select` standardizes inputs and picks the lengthscale per task by
    minimizing the GP marginal likelihood (`dirichlet_gp_nll`, rewritten correctly — see `docs/BUGS.md`).
-   §6 confirms this carries the calibration/accuracy win over to real AnnoMI LLM embeddings.
+   §6 confirms this carries the calibration/accuracy win over to real IC-AnnoMI LLM embeddings.
 
 ## Reproduction
-- `experiments/calibration_study/calib_analysis.py` — ECE/Brier, AnnoMI GPP vs LPE.
+- `experiments/calibration_study/calib_analysis.py` — ECE/Brier, IC-AnnoMI GPP vs LPE.
 - `experiments/calibration_study/calib_why.py` — per-`n_obs` Pearson + rational-uncertainty decomposition (binary vs multiclass).
 - `experiments/calibration_study/rescue_calib.py` — `strength`×`alpha_eps` sweep (no rescue).
 - `experiments/calibration_study/rescue_temp.py` — softmax temperature sweep (no rescue).
 - `experiments/calibration_study/kernel_rescue.py` — RBF lengthscale sweep + marginal-likelihood selection (rescue).
 - `experiments/calibration_study/kernel_compare.py` — kernel ablation: cosine vs RBF vs Laplace vs SE-on-sphere vs LPE, each at its ML-best lengthscale (§5c — isolates locality from the metric).
-- `experiments/calibration_study/annomi_kernel_repeats.py` — §6: AnnoMI cosine vs RBF vs Laplace vs LPE with 5-seed error bars (productized-kernel validation on real LLM embeddings).
+- `experiments/calibration_study/annomi_kernel_repeats.py` — §6: IC-AnnoMI cosine vs RBF vs Laplace vs LPE with 5-seed error bars (productized-kernel validation on real LLM embeddings).
 - `experiments/shapes3d/step4_decomposition_validation.py` — quantitative aleatoric/epistemic validation (alea tracks fuzziness; MI tracks data scarcity; not "confidently ignorant").
 - `experiments/shapes3d/step4_ood.py` — multiclass OOD detection (near-OOD novel class + far-OOD noise) vs Maha/MSP/LPE.
 - `experiments/shapes3d/step4_kscaling.py` — K∈{2,4,5,10} accuracy/Brier/ECE vs LPE + MI-monotonicity (generality beyond K=3).

@@ -1,4 +1,4 @@
-# AnnoMI Motivation Analysis: Comprehensive Technical Report
+# IC-AnnoMI Motivation Analysis: Comprehensive Technical Report
 
 ## 1. Executive Summary
 This project evaluates the capability of open-weights Large Language Models (**Gemma-3-27b-it** and **Qwen3-VL-30B**) to encode motivational interviewing concepts (Change Talk vs. Sustain Talk vs. Neutral). We employ **Gaussian Process Probing (GPP)** to analyze these representations, focusing on **uncertainty quantification** and **sample efficiency**.
@@ -15,12 +15,12 @@ Key technical achievements include:
 
 ### 2.1 Why Binary and Multiclass?
 We conducted parallel experiments for two tasks:
-1.  **Multiclass (3-Way)**: *Change* vs. *Sustain* vs. *Neutral*. This reflects the real-world complexity of the AnnoMI dataset.
+1.  **Multiclass (3-Way)**: *Change* vs. *Sustain* vs. *Neutral*. This reflects the real-world complexity of the IC-AnnoMI dataset.
 2.  **Binary (2-Way)**: *Change* vs. *Non-Change* (Sustain + Neutral).
     *   **Rationale**: The binary task serves as a simpler proxy to verify the "Change Talk" signal strength. It also acts as a regression test for the original GPP-Beta implementation, ensuring that our new pipeline remains consistent with established baselines.
 
 ### 2.2 Dataset & Balancing Strategy
-*   **Source**: AnnoMI dataset (`IC_AnnoMI.csv`).
+*   **Source**: IC-AnnoMI dataset (`IC_AnnoMI.csv`).
 *   **Preprocessing**:
     *   **Filtering**: Only client utterances following a therapist utterance were selected.
     *   **Balancing**: The **training set** was balanced by undersampling majority classes to match the count of the minority class. This prevents the GP from learning a trivial prior (e.g., predicting "Neutral" always).
@@ -84,9 +84,14 @@ We tested 5 distinct input configurations to isolate the effects of context, qua
 | Experiment | Input Template (`{t}`=Therapist, `{c}`=Client) | Prompt Strategy |
 | :--- | :--- | :--- |
 | **Context** | `INPUT: Therapist: {t}\nClient: {c}\nOUTPUT:` | Instruction Only |
-| **Context + Quality** | `INPUT: Therapist: {t} (Quality: {q})\nClient: {c}\nOUTPUT:` | Instruction Only |
+| **Context + Quality** ⚠️ *oracle* | `INPUT: Therapist: {t} (Quality: {q})\nClient: {c}\nOUTPUT:` | Instruction Only |
 | **Context (Expert)** | `[Expert Prompt]\nINPUT: Therapist: {t}\nClient: {c}\nOUTPUT:` | Expert Persona |
-| **Context + Quality (Expert)** | `[Expert Prompt]\nINPUT: Therapist: {t} (Quality: {q})\nClient: {c}\nOUTPUT:` | Expert Persona |
+| **Context + Quality (Expert)** ⚠️ *oracle* | `[Expert Prompt]\nINPUT: Therapist: {t} (Quality: {q})\nClient: {c}\nOUTPUT:` | Expert Persona |
+
+> ⚠️ **The two "Quality" rows are oracle upper bounds, not deployable results.** `{q}` is the *gold*
+> therapist-quality label, injected into the **test** prompt as well as train (`docs/BUGS.md` B2). Gold
+> quality correlates with client talk type, so these rows are inflated relative to the "Context" baseline
+> they are compared against. The honest version (out-of-fold predicted quality) was not implemented.
 | **Context (Expert Few-Shot)** | `[Expert Prompt]\n[Few-Shot Examples]\nINPUT: Therapist: {t}\nClient: {c}\nOUTPUT:` | Expert + Few-Shot |
 
 *Note: The "Instruction Only" prompt is "choose one of the three options (change, sustain, or neutral)".*
